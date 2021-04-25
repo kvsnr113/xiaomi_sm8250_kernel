@@ -6,7 +6,6 @@
 #include <asm/dma-iommu.h>
 #include <asm/memory.h>
 #include <linux/clk/qcom.h>
-#include <linux/coresight-stm.h>
 #include <linux/delay.h>
 #include <linux/devfreq.h>
 #include <linux/hash.h>
