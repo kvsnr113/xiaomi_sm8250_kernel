@@ -5197,6 +5197,7 @@ static int __init fastrpc_device_init(void)
 	struct device *secure_dev = NULL;
 	int err = 0, i;
 
+#ifdef CONFIG_DEBUG_FS
 	debugfs_root = debugfs_create_dir("adsprpc", NULL);
 	if (IS_ERR_OR_NULL(debugfs_root)) {
 #ifdef CONFIG_DEBUG_FS
@@ -5206,6 +5207,7 @@ static int __init fastrpc_device_init(void)
 		debugfs_remove_recursive(debugfs_root);
 		debugfs_root = NULL;
 	}
+#endif
 	memset(me, 0, sizeof(*me));
 	fastrpc_init(me);
 	me->dev = NULL;
