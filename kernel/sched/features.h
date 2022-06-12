@@ -81,6 +81,7 @@
  * When doing wakeups, attempt to limit superfluous scans of the LLC domain.
  */
 #define SCHED_FEAT_SIS_PROP 1
+#define SCHED_FEAT_SIS_UTIL 1
 
 /*
  * Issue a WARN when we do multiple update_rq_clock() calls
