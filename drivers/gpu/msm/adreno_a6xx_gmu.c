@@ -12,9 +12,7 @@
 
 #include "adreno.h"
 #include "adreno_a6xx.h"
-#include "adreno_snapshot.h"
 #include "kgsl_gmu.h"
-#include "kgsl_trace.h"
 
 static const unsigned int a6xx_gmu_gx_registers[] = {
 	/* GMU GX */
@@ -631,7 +629,6 @@ static int a6xx_gmu_oob_set(struct kgsl_device *device,
 
 	gmu_core_regwrite(device, A6XX_GMU_GMU2HOST_INTR_CLR, check);
 
-	trace_kgsl_gmu_oob_set(set);
 	return ret;
 }
 
@@ -658,7 +655,6 @@ static inline void a6xx_gmu_oob_clear(struct kgsl_device *device,
 		clear = BIT(req + 24);
 
 	gmu_core_regwrite(device, A6XX_GMU_HOST2GMU_INTR_SET, clear);
-	trace_kgsl_gmu_oob_clear(clear);
 }
 
 static void a6xx_gmu_irq_enable(struct kgsl_device *device)
