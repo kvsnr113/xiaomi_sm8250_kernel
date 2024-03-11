@@ -1840,7 +1840,7 @@ static int adreno_init(struct kgsl_device *device)
 	set_bit(ADRENO_DEVICE_INITIALIZED, &adreno_dev->priv);
 
 	/*
-	 * Allocate a small chunk of memory for precise drawobj profiling for
+	 * Allocate a small chunk of memory for precise drawobj  for
 	 * those targets that have the always on timer
 	 */
 
@@ -3174,7 +3174,7 @@ static int adreno_drain(struct kgsl_device *device)
 /* Caller must hold the device mutex. */
 static int adreno_suspend_context(struct kgsl_device *device)
 {
-	/* process any profiling results that are available */
+	/* process any  results that are available */
 	adreno_profile_process_results(ADRENO_DEVICE(device));
 
 	/* Wait for the device to go idle */
