@@ -10282,7 +10282,7 @@ static inline void update_sd_lb_stats(struct lb_env *env, struct sd_lb_stats *sd
 		struct root_domain *rd = env->dst_rq->rd;
 
 		/* update overload indicator if we are at root domain */
-		WRITE_ONCE(rd->overload, sg_status & SG_OVERLOAD);
+		set_rd_overload(env->dst_rq->rd, sg_status & SG_OVERLOAD);
 
 		/* Update over-utilization (tipping point, U >= 0) indicator */
 		WRITE_ONCE(rd->overutilized, sg_status & SG_OVERUTILIZED);
@@ -12026,8 +12026,8 @@ static int newidle_balance(struct rq *this_rq, struct rq_flags *rf)
 		goto out;
 	}
 
-	if (!READ_ONCE(this_rq->rd->overload) ||
-	    this_rq->avg_idle < sd->max_newidle_lb_cost) {
+	if (!get_rd_overload(this_rq->rd) ||
+	    (sd && avg_idle < sd->max_newidle_lb_cost)) {
 
 		update_next_balance(sd, &next_balance);
 		rcu_read_unlock();
