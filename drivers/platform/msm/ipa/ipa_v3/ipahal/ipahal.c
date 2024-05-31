@@ -1749,11 +1749,13 @@ int ipahal_init(enum ipa_hw_type ipa_hw_type, void __iomem *base,
 		goto bail_free_fltrt;
 	}
 
+#ifdef CONFIG_IPC_LOGGING
 	/* create an IPC buffer for the registers dump */
 	ipahal_ctx->regdumpbuf = ipc_log_context_create(IPAHAL_IPC_LOG_PAGES,
 		"ipa_regs", 0);
 	if (ipahal_ctx->regdumpbuf == NULL)
 		IPAHAL_ERR("failed to create IPA regdump log, continue...\n");
+#endif
 
 	ipahal_debugfs_init();
 
@@ -1762,10 +1764,12 @@ int ipahal_init(enum ipa_hw_type ipa_hw_type, void __iomem *base,
 bail_free_fltrt:
 	ipahal_fltrt_destroy();
 bail_free_ctx:
+	kfree(ipahal_ctx);
+#ifdef CONFIG_IPC_LOGGING
 	if (ipahal_ctx->regdumpbuf)
 		ipc_log_context_destroy(ipahal_ctx->regdumpbuf);
-	kfree(ipahal_ctx);
 	ipahal_ctx = NULL;
+#endif
 bail_err_exit:
 	return result;
 }
