@@ -13352,6 +13352,10 @@ void check_for_migration(struct rq *rq, struct task_struct *p)
 	int new_cpu = -1;
 	int prev_cpu = task_cpu(p);
 	int ret;
+#ifndef CONFIG_SCHED_CASS
+	int cpu = smp_processor_id();
+	struct sched_domain *sd = NULL;
+#endif
 
 	if (rq->misfit_task_load) {
 		if (rq->curr->state != TASK_RUNNING ||
@@ -13362,9 +13366,13 @@ void check_for_migration(struct rq *rq, struct task_struct *p)
 			return;
 
 		raw_spin_lock(&migration_lock);
+	#ifndef CONFIG_SCHED_CASS
 		rcu_read_lock();
 		new_cpu = find_energy_efficient_cpu(p, prev_cpu, 0, false, 1);
 		rcu_read_unlock();
+	#else
+		new_cpu = cass_best_cpu(p, prev_cpu, 0);
+	#endif
 		if ((new_cpu != -1) && (new_cpu != prev_cpu) &&
 		    (capacity_orig_of(new_cpu) > capacity_orig_of(prev_cpu))) {
 			active_balance = kick_active_balance(rq, p, new_cpu);
