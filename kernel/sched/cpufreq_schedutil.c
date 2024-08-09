@@ -364,21 +364,18 @@ unsigned long apply_dvfs_headroom(int cpu, unsigned long util, unsigned long max
 
 	if (cpumask_test_cpu(cpu, cpu_lp_mask)) {
 		switch (kp_active_mode()) {
-			case 1: headroom = util + (util >> 1) + (util >> 2); break; // 1.75x
-			case 3: headroom = util + (util >> 0) + (util >> 1); break; // 2.5x
-			default: headroom = util + (util >> 0); break; // 2x
+			case 3: headroom = util + (util >> 0) + (util >> 0); break; // 3x
+			default: headroom = util + (util >> 0) + (util >> 1); break; // 2.5x
 		}
 	} else if (cpumask_test_cpu(cpu, cpu_perf_mask)) {
 		switch (kp_active_mode()) {
-			case 1: headroom = util + (util >> 1); break; // 1.5x
-			case 3: headroom = util + (util >> 0); break; // 2x
-			default: headroom = util + (util >> 1) + (util >> 2); break; // 1.75x
+			case 3: headroom = util + (util >> 0) + (util >> 1); break; // 2.5x
+			default: headroom = util + (util >> 0) + (util >> 2); break; // 2.25x
 		}
 	} else {
 		switch (kp_active_mode()) {
-			case 1: headroom = util; break; // 1x
-			case 3: headroom = util + (util >> 1); break; // 1.5x
-			default: headroom = util + (util >> 2); break; // 1.25x
+			case 3: headroom = util + (util >> 1) + (util >> 2); break; // 1.75x
+			default: headroom = util + (util >> 1); break; // 1.5x
 		}
 	}
 
