@@ -418,9 +418,8 @@ static int tz_get_target_freq(struct devfreq *devfreq, unsigned long *freq)
 	}
 
 	switch (kp_active_mode()) {
-		case 1: adrenoboost = 0; break;
-		case 3: adrenoboost = 2; break;
-		default: adrenoboost = 1; break;
+		case 3: adrenoboost = 1; break;
+		default: adrenoboost = 0; break;
 	}
 
 	*freq = stats->current_frequency;
