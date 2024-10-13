@@ -691,7 +691,7 @@ KBUILD_AFLAGS   += -Os
 KBUILD_LDFLAGS  += -Os
 else ifeq ($(cc-name),clang)
 KBUILD_CFLAGS   += -mllvm -hot-cold-split=true
-KBUILD_CFLAGS   += -fcf-protection=none -fno-stack-protector
+KBUILD_CFLAGS   += -fcf-protection=none
 KBUILD_CFLAGS   += -mllvm -regalloc-enable-advisor=release
 KBUILD_LDFLAGS  += -mllvm -regalloc-enable-advisor=release
 KBUILD_LDFLAGS  += -mllvm -enable-ml-inliner=release
@@ -711,7 +711,7 @@ KBUILD_LDFLAGS  += -O3 --plugin-opt=O3
 KBUILD_CFLAGS   += -mcpu=cortex-a76.cortex-a55
 KBUILD_AFLAGS   += -mcpu=cortex-a76.cortex-a55
 
-KBUILD_CFLAGS   += -fcf-protection=none -fno-stack-protector
+KBUILD_CFLAGS   += -fcf-protection=none
 
 ifdef CONFIG_INLINE_OPTIMIZATION
 ifdef CONFIG_CC_IS_CLANG
