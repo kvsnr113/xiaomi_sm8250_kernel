@@ -685,13 +685,16 @@ KBUILD_CFLAGS	+= $(call cc-disable-warning, format-overflow)
 KBUILD_CFLAGS	+= $(call cc-disable-warning, int-in-bool-context)
 KBUILD_CFLAGS	+= $(call cc-disable-warning, address-of-packed-member)
 
+ifeq ($(CONFIG_FCF_PROTECTION_NONE), y)
+KBUILD_CFLAGS   += -fcf-protection=none
+endif
+
 ifeq ($(CONFIG_CC_OPTIMIZE_FOR_SIZE), y)
 KBUILD_CFLAGS   += -Os
 KBUILD_AFLAGS   += -Os
 KBUILD_LDFLAGS  += -Os
 else ifeq ($(cc-name),clang)
 KBUILD_CFLAGS   += -mllvm -hot-cold-split=true
-KBUILD_CFLAGS   += -fcf-protection=none
 KBUILD_CFLAGS   += -mllvm -regalloc-enable-advisor=release
 KBUILD_LDFLAGS  += -mllvm -regalloc-enable-advisor=release
 KBUILD_LDFLAGS  += -mllvm -enable-ml-inliner=release
@@ -710,8 +713,6 @@ KBUILD_LDFLAGS  += -O3 --plugin-opt=O3
 
 KBUILD_CFLAGS   += -mcpu=cortex-a76.cortex-a55
 KBUILD_AFLAGS   += -mcpu=cortex-a76.cortex-a55
-
-KBUILD_CFLAGS   += -fcf-protection=none
 
 ifdef CONFIG_INLINE_OPTIMIZATION
 ifdef CONFIG_CC_IS_CLANG

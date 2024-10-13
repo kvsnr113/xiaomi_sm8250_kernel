@@ -485,6 +485,10 @@ config STACKPROTECTOR_STRONG
 	  about 20% of all kernel functions, which increases the kernel code
 	  size by about 2%.
 
+config FCF_PROTECTION_NONE
+	bool "Disable FCF Protection"
+	default n
+	
 config CFI
 	bool
 
