@@ -701,10 +701,10 @@ KBUILD_LDFLAGS  += -mllvm -enable-ml-inliner=release
 KBUILD_CFLAGS   += -O3 -march=armv8.2-a+lse+crypto+dotprod --cuda-path=/dev/null
 KBUILD_AFLAGS   += -O3 -march=armv8.2-a+lse+crypto+dotprod
 KBUILD_LDFLAGS  += -O3 --plugin-opt=O3
-KBUILD_CFLAGS   += -mcpu=cortex-a77
-KBUILD_AFLAGS   += -mcpu=cortex-a77
+KBUILD_CFLAGS   += -mcpu=cortex-a55
+KBUILD_AFLAGS   += -mcpu=cortex-a55
 ifeq ($(CONFIG_LD_IS_LLD), y)
-KBUILD_LDFLAGS  += -mllvm -mcpu=cortex-a77
+KBUILD_LDFLAGS  += -mllvm -mcpu=cortex-a55
 endif
 else
 KBUILD_CFLAGS   += -O3 -march=armv8.2-a+lse+crypto+dotprod
