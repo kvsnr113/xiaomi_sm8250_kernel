@@ -33,15 +33,6 @@
 #define IPC_LOGPAGES 10
 #define MIN_TEMP_DEF_OFFSET		0xFF
 
-enum tsens_dbg_type {
-	TSENS_DBG_POLL,
-	TSENS_DBG_LOG_TEMP_READS,
-	TSENS_DBG_LOG_INTERRUPT_TIMESTAMP,
-	TSENS_DBG_LOG_BUS_ID_DATA,
-	TSENS_DBG_MTC_DATA,
-	TSENS_DBG_LOG_MAX
-};
-
 #define tsens_sec_to_msec_value		1000
 
 struct tsens_device;
@@ -93,29 +84,6 @@ struct tsens_device;
 #define	TSENS_ERR(dev, msg, x...)		pr_err(msg, ##x)
 #define	TSENS_DUMP(dev, msg, x...)		pr_info(msg, ##x)
 #endif
-
-#if defined(CONFIG_THERMAL_TSENS)
-int tsens2xxx_dbg(struct tsens_device *data, u32 id, u32 dbg_type, int *temp);
-#else
-static inline int tsens2xxx_dbg(struct tsens_device *data, u32 id,
-						u32 dbg_type, int *temp)
-{ return -ENXIO; }
-#endif
-
-struct tsens_dbg {
-	u32				idx;
-	unsigned long long		time_stmp[DEBUG_SIZE];
-	unsigned long			temp[DEBUG_SIZE];
-};
-
-struct tsens_dbg_context {
-	struct tsens_device		*tmdev;
-	struct tsens_dbg		sensor_dbg_info[TSENS_MAX_SENSORS];
-	int				tsens_critical_wd_cnt;
-	u32				irq_idx;
-	unsigned long long		irq_time_stmp[DEBUG_SIZE];
-	struct delayed_work		tsens_critical_poll_test;
-};
 
 struct tsens_context {
 	enum thermal_device_mode	high_th_state;
@@ -203,7 +171,6 @@ struct tsens_device {
 	void					*ipc_log1;
 	void					*ipc_log2;
 	phys_addr_t				phys_addr_tm;
-	struct tsens_dbg_context	tsens_dbg;
 	spinlock_t			tsens_crit_lock;
 	spinlock_t			tsens_upp_low_lock;
 	const struct tsens_data		*ctrl_data;
