@@ -2587,8 +2587,6 @@ static int npu_probe(struct platform_device *pdev)
 		goto error_res_init;
 	}
 
-	npu_debugfs_init(npu_dev);
-
 	rc = npu_host_init(npu_dev);
 	if (rc) {
 		NPU_ERR("unable to init host\n");
@@ -2641,7 +2639,6 @@ static int npu_remove(struct platform_device *pdev)
 
 	npu_dev = platform_get_drvdata(pdev);
 	npu_host_deinit(npu_dev);
-	npu_debugfs_deinit(npu_dev);
 	npu_cdsprm_cxlimit_deinit(npu_dev);
 	if (npu_dev->tcdev)
 		thermal_cooling_device_unregister(npu_dev->tcdev);
