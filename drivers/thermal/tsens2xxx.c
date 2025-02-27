@@ -194,10 +194,6 @@ static int tsens2xxx_get_temp(struct tsens_sensor *sensor, int *temp)
 
 			atomic_set(&in_tsens_reinit, 1);
 
-			if (tmdev->ops->dbg)
-				tmdev->ops->dbg(tmdev, 0,
-					TSENS_DBG_LOG_BUS_ID_DATA, NULL);
-
 			while (1) {
 				/*
 				 * Invoke scm call only if SW register write is
@@ -300,7 +296,6 @@ sensor_read:
 
 	if (code & TSENS_TM_SN_STATUS_VALID_BIT) {
 		msm_tsens_convert_temp(last_temp, temp);
-		goto dbg;
 	}
 
 	code = readl_relaxed_no_log(sensor_addr +
@@ -309,7 +304,6 @@ sensor_read:
 	if (code & TSENS_TM_SN_STATUS_VALID_BIT) {
 		last_temp = last_temp2;
 		msm_tsens_convert_temp(last_temp, temp);
-		goto dbg;
 	}
 
 	code = readl_relaxed_no_log(sensor_addr +
@@ -319,7 +313,6 @@ sensor_read:
 	if (code & TSENS_TM_SN_STATUS_VALID_BIT) {
 		last_temp = last_temp3;
 		msm_tsens_convert_temp(last_temp, temp);
-		goto dbg;
 	}
 
 	if (last_temp == last_temp2)
@@ -328,11 +321,6 @@ sensor_read:
 		last_temp = last_temp3;
 
 	msm_tsens_convert_temp(last_temp, temp);
-
-dbg:
-	if (tmdev->ops->dbg)
-		tmdev->ops->dbg(tmdev, (u32) sensor->hw_id,
-					TSENS_DBG_LOG_TEMP_READS, temp);
 
 	return 0;
 }
@@ -360,9 +348,6 @@ int tsens_2xxx_get_min_temp(struct tsens_sensor *sensor, int *temp)
 			code, tmdev->trdy_fail_ctr);
 		tmdev->trdy_fail_ctr++;
 		if (tmdev->trdy_fail_ctr >= TSENS_MAX_READ_FAIL) {
-			if (tmdev->ops->dbg)
-				tmdev->ops->dbg(tmdev, 0,
-					TSENS_DBG_LOG_BUS_ID_DATA, NULL);
 			BUG();
 		}
 		return -ENODATA;
@@ -374,7 +359,6 @@ int tsens_2xxx_get_min_temp(struct tsens_sensor *sensor, int *temp)
 	last_temp = code & TSENS_TM_SN_LAST_TEMP_MASK;
 	if (code & valid_bit) {
 		msm_tsens_convert_temp(last_temp, temp);
-		goto dbg;
 	}
 
 	code = readl_relaxed_no_log(sensor_addr);
@@ -382,7 +366,6 @@ int tsens_2xxx_get_min_temp(struct tsens_sensor *sensor, int *temp)
 	if (code & valid_bit) {
 		last_temp = last_temp2;
 		msm_tsens_convert_temp(last_temp, temp);
-		goto dbg;
 	}
 
 	code = readl_relaxed_no_log(sensor_addr);
@@ -390,7 +373,6 @@ int tsens_2xxx_get_min_temp(struct tsens_sensor *sensor, int *temp)
 	if (code & valid_bit) {
 		last_temp = last_temp3;
 		msm_tsens_convert_temp(last_temp, temp);
-		goto dbg;
 	}
 
 	if (last_temp == last_temp2)
@@ -399,9 +381,6 @@ int tsens_2xxx_get_min_temp(struct tsens_sensor *sensor, int *temp)
 		last_temp = last_temp3;
 
 	msm_tsens_convert_temp(last_temp, temp);
-
-dbg:
-	TSENS_DBG(tmdev, "Min temp: %d\n", *temp);
 
 	return 0;
 }
@@ -607,9 +586,6 @@ static irqreturn_t tsens_tm_critical_irq_thread(int irq, void *data)
 			wd_log = readl_relaxed(wd_log_addr);
 			if (wd_log >= TSENS_DEBUG_WDOG_TRIGGER_COUNT) {
 				pr_err("Watchdog count:%d\n", wd_log);
-				if (tm->ops->dbg)
-					tm->ops->dbg(tm, 0,
-					TSENS_DBG_LOG_BUS_ID_DATA, NULL);
 				BUG();
 			}
 
@@ -771,9 +747,6 @@ static irqreturn_t tsens_tm_irq_thread(int irq, void *data)
 	/* Disable monitoring sensor trip threshold for triggered sensor */
 	mb();
 
-	if (tm->ops->dbg)
-		tm->ops->dbg(tm, 0, TSENS_DBG_LOG_INTERRUPT_TIMESTAMP, NULL);
-
 	return IRQ_HANDLED;
 }
 
@@ -827,11 +800,6 @@ static int tsens2xxx_hw_init(struct tsens_device *tmdev)
 
 	spin_lock_init(&tmdev->tsens_crit_lock);
 	spin_lock_init(&tmdev->tsens_upp_low_lock);
-
-	if (tmdev->ctrl_data->mtc) {
-		if (tmdev->ops->dbg)
-			tmdev->ops->dbg(tmdev, 0, TSENS_DBG_MTC_DATA, NULL);
-	}
 
 	return 0;
 }
@@ -890,7 +858,6 @@ static const struct tsens_ops ops_tsens2xxx = {
 	.get_temp	= tsens2xxx_get_temp,
 	.set_trips	= tsens2xxx_set_trip_temp,
 	.interrupts_reg	= tsens2xxx_register_interrupts,
-	.dbg		= tsens2xxx_dbg,
 	.sensor_en	= tsens2xxx_hw_sensor_en,
 };
 
