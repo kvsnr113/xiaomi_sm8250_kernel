@@ -1035,7 +1035,6 @@ static int host_error_hdlr(struct npu_device *npu_dev, bool force)
 		fw_alive = false;
 	}
 
-	npu_dump_debug_info(npu_dev);
 
 	/*
 	 * if fw is still alive, notify fw before power off
@@ -2939,7 +2938,6 @@ int32_t npu_host_loopback_test(struct npu_device *npu_dev)
 
 	if (!ret) {
 		NPU_ERR("npu: NPU_IPC_CMD_LOOPBACK time out\n");
-		npu_dump_debug_info(npu_dev);
 		ret = -ETIMEDOUT;
 	} else if (ret < 0) {
 		NPU_ERR("Wait for loopback done interrupted by signal\n");
