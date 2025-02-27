@@ -501,9 +501,6 @@ static int fts_input_report_b(struct fts_ts_data *data)
 			input_report_abs(data->input_dev, ABS_MT_PRESSURE,
 					 events[i].p);
 #endif
-			if (events[i].area <= 0) {
-				events[i].area = 0x09;
-			}
 			input_report_abs(data->input_dev, ABS_MT_POSITION_X,
 					 events[i].x);
 			input_report_abs(data->input_dev, ABS_MT_POSITION_Y,
@@ -512,11 +509,6 @@ static int fts_input_report_b(struct fts_ts_data *data)
 			touchs |= BIT(events[i].id);
 			data->touchs |= BIT(events[i].id);
 
-			if ((data->log_level >= 2) ||
-			    ((1 == data->log_level) &&
-			     (FTS_TOUCH_DOWN == events[i].flag))) {
-				FTS_DEBUG("[B]P%d DOWN!", events[i].id);
-			}
 		} else {
 			uppoint++;
 			input_mt_report_slot_state(data->input_dev,
@@ -583,9 +575,6 @@ static int fts_input_report_a(struct fts_ts_data *data)
 			input_report_abs(data->input_dev, ABS_MT_PRESSURE,
 					 events[i].p);
 #endif
-			if (events[i].area <= 0) {
-				events[i].area = 0x09;
-			}
 
 			input_report_abs(data->input_dev, ABS_MT_POSITION_X,
 					 events[i].x);
@@ -594,14 +583,6 @@ static int fts_input_report_a(struct fts_ts_data *data)
 
 			input_mt_sync(data->input_dev);
 
-			if ((data->log_level >= 2) ||
-			    ((1 == data->log_level) &&
-			     (FTS_TOUCH_DOWN == events[i].flag))) {
-				FTS_DEBUG("[A]P%d(%d, %d)[p:%d,tm:%d] DOWN!",
-					  events[i].id, events[i].x,
-					  events[i].y, events[i].p,
-					  events[i].area);
-			}
 			touchs++;
 		}
 	}
@@ -713,8 +694,6 @@ static int fts_read_parse_touchdata(struct fts_ts_data *data)
 			      ((buf[FTS_TOUCH_PRE_POS + base] & 0x1C) >> 2);
 		events[i].flag = buf[FTS_TOUCH_EVENT_POS + base] >> 6;
 		events[i].id = buf[FTS_TOUCH_ID_POS + base] >> 4;
-		events[i].area = buf[FTS_TOUCH_AREA_POS + base] >> 4;
-		events[i].p = buf[FTS_TOUCH_PRE_POS + base] & 0x03;
 
 		if (EVENT_DOWN(events[i].flag) && (data->point_num == 0)) {
 			FTS_DEBUG("abnormal touch data from fw");
