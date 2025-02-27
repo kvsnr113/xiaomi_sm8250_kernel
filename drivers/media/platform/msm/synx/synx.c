@@ -12,7 +12,6 @@
 
 #include "synx_api.h"
 #include "synx_util.h"
-#include "synx_debugfs.h"
 
 struct synx_device *synx_dev;
 
@@ -1731,7 +1730,6 @@ static int __init synx_init(void)
 	INIT_LIST_HEAD(&synx_dev->import_list);
 	synx_dev->dma_context = dma_fence_context_alloc(1);
 
-	synx_dev->debugfs_root = init_synx_debug_dir(synx_dev);
 	pr_info("synx device init success\n");
 
 	return 0;
