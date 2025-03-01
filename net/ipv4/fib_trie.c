@@ -2214,78 +2214,6 @@ static struct key_vector *fib_trie_get_first(struct fib_trie_iter *iter,
 	return n;
 }
 
-static void trie_collect_stats(struct trie *t, struct trie_stat *s)
-{
-	struct key_vector *n;
-	struct fib_trie_iter iter;
-
-	memset(s, 0, sizeof(*s));
-
-	rcu_read_lock();
-	for (n = fib_trie_get_first(&iter, t); n; n = fib_trie_get_next(&iter)) {
-		if (IS_LEAF(n)) {
-			struct fib_alias *fa;
-
-			s->leaves++;
-			s->totdepth += iter.depth;
-			if (iter.depth > s->maxdepth)
-				s->maxdepth = iter.depth;
-
-			hlist_for_each_entry_rcu(fa, &n->leaf, fa_list)
-				++s->prefixes;
-		} else {
-			s->tnodes++;
-			if (n->bits < MAX_STAT_DEPTH)
-				s->nodesizes[n->bits]++;
-			s->nullpointers += tn_info(n)->empty_children;
-		}
-	}
-	rcu_read_unlock();
-}
-
-/*
- *	This outputs /proc/net/fib_triestats
- */
-static void trie_show_stats(struct seq_file *seq, struct trie_stat *stat)
-{
-	unsigned int i, max, pointers, bytes, avdepth;
-
-	if (stat->leaves)
-		avdepth = stat->totdepth*100 / stat->leaves;
-	else
-		avdepth = 0;
-
-	seq_printf(seq, "\tAver depth:     %u.%02d\n",
-		   avdepth / 100, avdepth % 100);
-	seq_printf(seq, "\tMax depth:      %u\n", stat->maxdepth);
-
-	seq_printf(seq, "\tLeaves:         %u\n", stat->leaves);
-	bytes = LEAF_SIZE * stat->leaves;
-
-	seq_printf(seq, "\tPrefixes:       %u\n", stat->prefixes);
-	bytes += sizeof(struct fib_alias) * stat->prefixes;
-
-	seq_printf(seq, "\tInternal nodes: %u\n\t", stat->tnodes);
-	bytes += TNODE_SIZE(0) * stat->tnodes;
-
-	max = MAX_STAT_DEPTH;
-	while (max > 0 && stat->nodesizes[max-1] == 0)
-		max--;
-
-	pointers = 0;
-	for (i = 1; i < max; i++)
-		if (stat->nodesizes[i] != 0) {
-			seq_printf(seq, "  %u: %u",  i, stat->nodesizes[i]);
-			pointers += (1<<i) * stat->nodesizes[i];
-		}
-	seq_putc(seq, '\n');
-	seq_printf(seq, "\tPointers: %u\n", pointers);
-
-	bytes += sizeof(struct key_vector *) * pointers;
-	seq_printf(seq, "Null ptrs: %u\n", stat->nullpointers);
-	seq_printf(seq, "Total size: %u  kB\n", (bytes + 1023) / 1024);
-}
-
 #ifdef CONFIG_IP_FIB_TRIE_STATS
 static void trie_show_usage(struct seq_file *seq,
 			    const struct trie_use_stats __percpu *stats)
@@ -2324,44 +2252,6 @@ static void fib_table_print(struct seq_file *seq, struct fib_table *tb)
 		seq_puts(seq, "Main:\n");
 	else
 		seq_printf(seq, "Id %d:\n", tb->tb_id);
-}
-
-
-static int fib_triestat_seq_show(struct seq_file *seq, void *v)
-{
-	struct net *net = (struct net *)seq->private;
-	unsigned int h;
-
-	seq_printf(seq,
-		   "Basic info: size of leaf:"
-		   " %zd bytes, size of tnode: %zd bytes.\n",
-		   LEAF_SIZE, TNODE_SIZE(0));
-
-	rcu_read_lock();
-	for (h = 0; h < FIB_TABLE_HASHSZ; h++) {
-		struct hlist_head *head = &net->ipv4.fib_table_hash[h];
-		struct fib_table *tb;
-
-		hlist_for_each_entry_rcu(tb, head, tb_hlist) {
-			struct trie *t = (struct trie *) tb->tb_data;
-			struct trie_stat stat;
-
-			if (!t)
-				continue;
-
-			fib_table_print(seq, tb);
-
-			trie_collect_stats(t, &stat);
-			trie_show_stats(seq, &stat);
-#ifdef CONFIG_IP_FIB_TRIE_STATS
-			trie_show_usage(seq, t->stats);
-#endif
-		}
-		cond_resched_rcu();
-	}
-	rcu_read_unlock();
-
-	return 0;
 }
 
 static struct key_vector *fib_trie_get_idx(struct seq_file *seq, loff_t pos)
@@ -2719,13 +2609,14 @@ static const struct seq_operations fib_route_seq_ops = {
 
 int __net_init fib_proc_init(struct net *net)
 {
-	if (!proc_create_net("fib_trie", 0444, net->proc_net, &fib_trie_seq_ops,
-			sizeof(struct fib_trie_iter)))
+#ifndef CONFIG_PROC_STRIPPED
+	if (!proc_create("fib_trie", S_IRUGO, net->proc_net, &fib_trie_fops))
 		goto out1;
 
-	if (!proc_create_net_single("fib_triestat", 0444, net->proc_net,
-			fib_triestat_seq_show, NULL))
+	if (!proc_create("fib_triestat", S_IRUGO, net->proc_net,
+			 &fib_triestat_fops))
 		goto out2;
+#endif
 
 	if (!proc_create_net("route", 0444, net->proc_net, &fib_route_seq_ops,
 			sizeof(struct fib_route_iter)))
@@ -2734,17 +2625,21 @@ int __net_init fib_proc_init(struct net *net)
 	return 0;
 
 out3:
-	remove_proc_entry("fib_triestat", net->proc_net);
-out2:
-	remove_proc_entry("fib_trie", net->proc_net);
-out1:
+	if (!IS_ENABLED(CONFIG_PROC_STRIPPED))
+		remove_proc_entry("fib_triestat", net->proc_net);
+
+	if (!IS_ENABLED(CONFIG_PROC_STRIPPED))
+		remove_proc_entry("fib_trie", net->proc_net);
+
 	return -ENOMEM;
 }
 
 void __net_exit fib_proc_exit(struct net *net)
 {
-	remove_proc_entry("fib_trie", net->proc_net);
-	remove_proc_entry("fib_triestat", net->proc_net);
+	if (!IS_ENABLED(CONFIG_PROC_STRIPPED)) {
+		remove_proc_entry("fib_trie", net->proc_net);
+		remove_proc_entry("fib_triestat", net->proc_net);
+	}
 	remove_proc_entry("route", net->proc_net);
 }
 
