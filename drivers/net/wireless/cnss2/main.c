@@ -2687,8 +2687,6 @@ static int cnss_probe(struct platform_device *plat_dev)
 	if (ret)
 		goto deinit_event_work;
 
-	cnss_debugfs_create(plat_priv);
-
 	ret = cnss_misc_init(plat_priv);
 	if (ret)
 		goto destroy_debugfs;
@@ -2705,7 +2703,6 @@ static int cnss_probe(struct platform_device *plat_dev)
 	return 0;
 
 destroy_debugfs:
-	cnss_debugfs_destroy(plat_priv);
 	cnss_qmi_deinit(plat_priv);
 deinit_event_work:
 	cnss_event_work_deinit(plat_priv);
@@ -2738,7 +2735,6 @@ static int cnss_remove(struct platform_device *plat_dev)
 	cnss_unregister_ims_service(plat_priv);
 	cnss_unregister_coex_service(plat_priv);
 	cnss_misc_deinit(plat_priv);
-	cnss_debugfs_destroy(plat_priv);
 	cnss_qmi_deinit(plat_priv);
 	cnss_event_work_deinit(plat_priv);
 	cnss_remove_sysfs(plat_priv);
@@ -2768,10 +2764,7 @@ static int __init cnss_initialize(void)
 {
 	int ret = 0;
 
-	cnss_debug_init();
 	ret = platform_driver_register(&cnss_platform_driver);
-	if (ret)
-		cnss_debug_deinit();
 
 	return ret;
 }
@@ -2779,7 +2772,6 @@ static int __init cnss_initialize(void)
 static void __exit cnss_exit(void)
 {
 	platform_driver_unregister(&cnss_platform_driver);
-	cnss_debug_deinit();
 }
 
 module_init(cnss_initialize);
