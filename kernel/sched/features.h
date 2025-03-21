@@ -19,6 +19,9 @@
  * 0-lag point or until is has exhausted it's slice.
  */
 #define SCHED_FEAT_RUN_TO_PARITY 0
+#ifdef CONFIG_SCHED_BORE
+#define SCHED_FEAT_RUN_TO_PARITY_BORE 0
+#endif /* CONFIG_SCHED_BORE */
 /*
  * Allow wakeup of tasks with a shorter slice to cancel RESPECT_SLICE for
  * current.
