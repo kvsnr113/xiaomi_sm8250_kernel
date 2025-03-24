@@ -11,7 +11,9 @@ static int __init audio_platform_init(void)
 {
 	msm_compress_dsp_init();
 	msm_fe_dai_init();
+	#ifdef CONFIG_HDMI
 	msm_dai_q6_hdmi_init();
+	#endif
 	msm_dai_q6_init();
 	msm_dai_slim_init();
 	msm_dai_stub_init();
@@ -48,7 +50,9 @@ static void audio_platform_exit(void)
 	msm_dai_stub_exit();
 	msm_dai_slim_exit();
 	msm_dai_q6_exit();
+	#ifdef CONFIG_HDMI
 	msm_dai_q6_hdmi_exit();
+	#endif
 	msm_fe_dai_exit();
 	msm_compress_dsp_exit();
 }

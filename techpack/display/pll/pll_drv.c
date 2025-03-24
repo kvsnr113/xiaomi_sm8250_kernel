@@ -137,8 +137,10 @@ static int mdss_pll_resource_parse(struct platform_device *pdev,
 		pll_res->pll_interface_type = MDSS_DSI_PLL_28LPM;
 	else if (!strcmp(compatible_stream, "qcom,mdss_dsi_pll_14nm"))
 		pll_res->pll_interface_type = MDSS_DSI_PLL_14NM;
+	#ifdef CONFIG_HDMI
 	else if (!strcmp(compatible_stream, "qcom,mdss_hdmi_pll_28lpm"))
 		pll_res->pll_interface_type = MDSS_HDMI_PLL_28LPM;
+	#endif
 	else
 		goto err;
 
@@ -169,9 +171,11 @@ static int mdss_pll_clock_register(struct platform_device *pdev,
 	case MDSS_DSI_PLL_14NM:
 		rc = dsi_pll_clock_register_14nm(pdev, pll_res);
 		break;
+	#ifdef CONFIG_HDMI
 	case MDSS_HDMI_PLL_28LPM:
 		rc = hdmi_pll_clock_register_28lpm(pdev, pll_res);
 		break;
+	#endif
 	case MDSS_UNKNOWN_PLL:
 	default:
 		rc = -EINVAL;
