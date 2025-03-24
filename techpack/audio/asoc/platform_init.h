@@ -7,7 +7,9 @@
 #define __PLATFORM_INIT_H__
 int msm_compress_dsp_init(void);
 int msm_fe_dai_init(void);
+#ifdef CONFIG_HDMI
 int msm_dai_q6_hdmi_init(void);
+#endif
 int msm_dai_q6_init(void);
 int msm_dai_stub_init(void);
 int msm_lsm_client_init(void);
@@ -39,7 +41,9 @@ void msm_pcm_afe_exit(void);
 void msm_lsm_client_exit(void);
 void msm_dai_stub_exit(void);
 void msm_dai_q6_exit(void);
+#ifdef CONFIG_HDMI
 void msm_dai_q6_hdmi_exit(void);
+#endif
 void msm_fe_dai_exit(void);
 void msm_compress_dsp_exit(void);
 

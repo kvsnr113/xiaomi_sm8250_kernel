@@ -170,11 +170,13 @@ ifdef CONFIG_SND_SOC_CPE
 	CPE_LSM_OBJS += msm-cpe-lsm.o
 endif
 
+ifdef CONFIG_HDMI
+	PLATFORM_OBJS += msm-dai-q6-hdmi-v2.o
+endif
 ifdef CONFIG_SND_SOC_QDSP6V2
 	PLATFORM_OBJS += msm-audio-effects-q6-v2.o
 	PLATFORM_OBJS += msm-compress-q6-v2.o
 	PLATFORM_OBJS += msm-dai-fe.o
-	PLATFORM_OBJS += msm-dai-q6-hdmi-v2.o
 	PLATFORM_OBJS += msm-dai-q6-v2.o
 	PLATFORM_OBJS += msm-dai-stub-v2.o
 	PLATFORM_OBJS += msm-lsm-client.o
