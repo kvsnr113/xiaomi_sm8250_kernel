@@ -36,6 +36,9 @@
 
 #include "power.h"
 
+#undef trace_suspend_resume
+#define trace_suspend_resume(x, ...)
+
 #define PROC_AWAKE_ID 12 /* 12th bit */
 #define AWAKE_BIT BIT(PROC_AWAKE_ID)
 extern struct qcom_smem_state *smem_state;
@@ -618,7 +621,6 @@ static int enter_state(suspend_state_t state)
 	trace_suspend_resume(TPS("sync_filesystems"), 0, true);
 	pr_debug("Syncing filesystems ... ");
 	ksys_sync();
-	pr_cont("done.\n");
 	trace_suspend_resume(TPS("sync_filesystems"), 0, false);
 #endif
 
