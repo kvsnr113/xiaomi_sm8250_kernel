@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2011-2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -59,7 +60,7 @@ static void csr_set_cfg_valid_channel_list(struct mac_context *mac,
 
 static void csr_save_tx_power_to_cfg(struct mac_context *mac,
 				     tDblLinkList *pList,
-				     enum band_info band);
+				     uint32_t cfgId);
 
 static void csr_set_cfg_country_code(struct mac_context *mac,
 				     uint8_t *countryCode);
@@ -1425,6 +1426,15 @@ QDF_STATUS csr_scan_for_ssid(struct mac_context *mac_ctx, uint32_t session_id,
 			}
 		}
 		req->scan_req.chan_list.num_chan = num_chan;
+	}
+
+	/* Add freq hint for scan for ssid */
+	if (!num_chan && profile->freq_hint &&
+	    csr_roam_is_valid_channel(mac_ctx, profile->freq_hint)) {
+		sme_debug("add freq hint %d", profile->freq_hint);
+		req->scan_req.chan_list.chan[0].freq =
+						profile->freq_hint;
+		req->scan_req.chan_list.num_chan = 1;
 	}
 
 	/* Extend it for multiple SSID */

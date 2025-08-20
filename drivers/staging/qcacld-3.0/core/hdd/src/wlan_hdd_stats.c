@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -44,6 +45,7 @@
 #include "wlan_hdd_sta_info.h"
 #include "cdp_txrx_host_stats.h"
 #include "cdp_txrx_misc.h"
+#include "wlan_hdd_object_manager.h"
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 0, 0)) && !defined(WITH_BACKPORTS)
 #define HDD_INFO_SIGNAL                 STATION_INFO_SIGNAL
@@ -84,8 +86,6 @@
 #endif /* kernel version less than 4.0.0 && no_backport */
 
 #define HDD_LINK_STATS_MAX		5
-
-#define MAX_HT_MCS_INDEX 7
 
 /* 11B, 11G Rate table include Basic rate and Extended rate
  * The IDX field is the rate index
@@ -3515,19 +3515,16 @@ static void hdd_get_max_rate_ht(struct hdd_station_info *stainfo,
 	}
 
 	if (!report_max) {
-		for (i = 0; i < MAX_HT_MCS_INDEX && i < mcsidx; i++) {
+		for (i = 0; i < mcsidx; i++) {
 			if (rssi <= rssi_mcs_tbl[mode][i]) {
 				mcsidx = i;
 				break;
 			}
 		}
-		if (mcsidx < stats->tx_rate.mcs &&
-		    stats->tx_rate.mcs <= MAX_HT_MCS_INDEX)
+		if (mcsidx < stats->tx_rate.mcs)
 			mcsidx = stats->tx_rate.mcs;
 	}
 
-	if (mcsidx > MAX_HT_MCS_INDEX)
-		mcsidx = MAX_HT_MCS_INDEX;
 	tmprate = supported_mcs_rate[mcsidx].supported_rate[flag];
 
 	hdd_debug("tmprate %d mcsidx %d", tmprate, mcsidx);
@@ -6018,12 +6015,17 @@ int wlan_hdd_get_station_stats(struct hdd_adapter *adapter)
 	struct stats_event *stats;
 	struct wlan_mlme_nss_chains *dynamic_cfg;
 	uint32_t tx_nss, rx_nss;
+	struct wlan_objmgr_vdev *vdev;
 
-	stats = wlan_cfg80211_mc_cp_stats_get_station_stats(adapter->vdev,
+	vdev = hdd_objmgr_get_vdev(adapter);
+	if (!vdev)
+		return -EINVAL;
+
+	stats = wlan_cfg80211_mc_cp_stats_get_station_stats(vdev,
 							    &ret);
 	if (ret || !stats) {
 		wlan_cfg80211_mc_cp_stats_free_stats_event(stats);
-		return ret;
+		goto out;
 	}
 
 	/* save summary stats to legacy location */
@@ -6064,11 +6066,12 @@ int wlan_hdd_get_station_stats(struct hdd_adapter *adapter)
 	adapter->hdd_stats.peer_stats.fcs_count =
 		stats->peer_adv_stats->fcs_count;
 
-	dynamic_cfg = mlme_get_dynamic_vdev_config(adapter->vdev);
+	dynamic_cfg = mlme_get_dynamic_vdev_config(vdev);
 	if (!dynamic_cfg) {
 		hdd_err("nss chain dynamic config NULL");
 		wlan_cfg80211_mc_cp_stats_free_stats_event(stats);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	switch (hdd_conn_get_connected_band(&adapter->session.station)) {
@@ -6081,15 +6084,15 @@ int wlan_hdd_get_station_stats(struct hdd_adapter *adapter)
 		rx_nss = dynamic_cfg->rx_nss[NSS_CHAINS_BAND_5GHZ];
 		break;
 	default:
-		tx_nss = wlan_vdev_mlme_get_nss(adapter->vdev);
-		rx_nss = wlan_vdev_mlme_get_nss(adapter->vdev);
+		tx_nss = wlan_vdev_mlme_get_nss(vdev);
+		rx_nss = wlan_vdev_mlme_get_nss(vdev);
 	}
 	/* Intersection of self and AP's NSS capability */
-	if (tx_nss > wlan_vdev_mlme_get_nss(adapter->vdev))
-		tx_nss = wlan_vdev_mlme_get_nss(adapter->vdev);
+	if (tx_nss > wlan_vdev_mlme_get_nss(vdev))
+		tx_nss = wlan_vdev_mlme_get_nss(vdev);
 
-	if (rx_nss > wlan_vdev_mlme_get_nss(adapter->vdev))
-		rx_nss = wlan_vdev_mlme_get_nss(adapter->vdev);
+	if (rx_nss > wlan_vdev_mlme_get_nss(vdev))
+		rx_nss = wlan_vdev_mlme_get_nss(vdev);
 
 	/* save class a stats to legacy location */
 	adapter->hdd_stats.class_a_stat.tx_nss = tx_nss;
@@ -6119,7 +6122,9 @@ int wlan_hdd_get_station_stats(struct hdd_adapter *adapter)
 		     sizeof(stats->vdev_chain_rssi[0].chain_rssi));
 	wlan_cfg80211_mc_cp_stats_free_stats_event(stats);
 
-	return 0;
+out:
+	hdd_objmgr_put_vdev(vdev);
+	return ret;
 }
 
 struct temperature_priv {

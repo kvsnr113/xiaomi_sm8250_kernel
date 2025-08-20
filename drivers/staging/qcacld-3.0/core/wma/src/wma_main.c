@@ -214,7 +214,7 @@ static uint32_t wma_get_number_of_tids_supported(uint8_t no_of_peers_supported,
 static uint32_t wma_get_number_of_tids_supported(uint8_t no_of_peers_supported,
 						 uint8_t num_vdevs)
 {
-	return (8 * no_of_peers_supported + num_vdevs + 2);
+	return 2 * (no_of_peers_supported + num_vdevs + 2);
 }
 #endif
 
@@ -6778,7 +6778,8 @@ int wma_rx_service_ready_ext_event(void *handle, uint8_t *event,
 	 * indicate 3 vdevs and firmware shall add 1 vdev for NAN. So decrement
 	 * the num_vdevs by 1.
 	 */
-	if (ucfg_nan_is_vdev_creation_allowed(wma_handle->psoc)) {
+	if (ucfg_nan_is_vdev_creation_allowed(wma_handle->psoc) ||
+	    QDF_GLOBAL_FTM_MODE == cds_get_conparam()) {
 		wlan_res_cfg->nan_separate_iface_support = true;
 	} else {
 		wlan_res_cfg->num_vdevs--;

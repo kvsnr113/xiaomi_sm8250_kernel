@@ -37,7 +37,7 @@ static const wmi_host_channel_width mode_to_width[WMI_HOST_MODE_MAX] = {
 	[WMI_HOST_MODE_11AC_VHT40_2G] = WMI_HOST_CHAN_WIDTH_40,
 	[WMI_HOST_MODE_11AC_VHT80]    = WMI_HOST_CHAN_WIDTH_80,
 	[WMI_HOST_MODE_11AC_VHT80_2G] = WMI_HOST_CHAN_WIDTH_80,
-#ifdef CONFIG_160MHZ_SUPPORT
+#if CONFIG_160MHZ_SUPPORT
 	[WMI_HOST_MODE_11AC_VHT80_80] = WMI_HOST_CHAN_WIDTH_80P80,
 	[WMI_HOST_MODE_11AC_VHT160]   = WMI_HOST_CHAN_WIDTH_160,
 #endif
@@ -345,7 +345,7 @@ wmi_unified_wow_remove_wakeup_pattern_send(
 }
 
 QDF_STATUS wmi_unified_ap_ps_cmd_send(wmi_unified_t wmi_handle,
-				      uint8_t peer_addr[6],
+				      uint8_t *peer_addr,
 				      struct ap_ps_params *param)
 {
 	if (wmi_handle->ops->send_set_ap_ps_param_cmd)

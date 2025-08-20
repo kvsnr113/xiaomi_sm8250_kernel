@@ -87,8 +87,6 @@ struct pe_hang_event_fixed_param {
 	uint8_t limprevsmestate;
 } qdf_packed;
 
-struct p2p_protocol_callbacks;
-
 static void __lim_init_bss_vars(struct mac_context *mac)
 {
 	qdf_mem_zero((void *)mac->lim.gpSession,
@@ -1079,8 +1077,7 @@ static QDF_STATUS pe_drop_pending_rx_mgmt_frames(struct mac_context *mac_ctx,
 		if (!(mac_ctx->rx_packet_drop_counter % 100))
 			pe_debug("No.of pending RX management frames reaches to 1/4th of threshold, rx_packet_drop_counter: %d",
 				mac_ctx->rx_packet_drop_counter);
-		
-		mac_ctx->rx_packet_drop_counter++;
+			mac_ctx->rx_packet_drop_counter++;
 	}
 	return QDF_STATUS_SUCCESS;
 }

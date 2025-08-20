@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -347,6 +348,7 @@ const int dp_stats_mapping_table[][STATS_TYPE_MAX] = {
 	{TXRX_FW_STATS_INVALID, TXRX_SOC_INTERRUPT_STATS},
 	{TXRX_FW_STATS_INVALID, TXRX_SOC_FSE_STATS},
 	{TXRX_FW_STATS_INVALID, TXRX_HAL_REG_WRITE_STATS},
+	{TXRX_FW_STATS_INVALID, TXRX_SOC_REO_HW_DESC_DUMP},
 };
 
 /* MCL specific functions */
@@ -2578,13 +2580,11 @@ static int dp_hw_link_desc_pool_setup(struct dp_soc *soc)
 			} else {
 				rem_entries = num_entries_per_buf;
 				scatter_buf_num++;
-				if (scatter_buf_num >= num_scatter_bufs) {
-					scatter_buf_num--;
+				if (scatter_buf_num >= num_scatter_bufs)
 					break;
-				}
-
-				scatter_buf_ptr = (uint8_t *)
-					(soc->wbm_idle_scatter_buf_base_vaddr[
+				scatter_buf_ptr =
+					(uint8_t *)
+				(soc->wbm_idle_scatter_buf_base_vaddr[
 					 scatter_buf_num]);
 			}
 			count++;
@@ -2596,7 +2596,7 @@ static int dp_hw_link_desc_pool_setup(struct dp_soc *soc)
 			num_scatter_bufs, soc->wbm_idle_scatter_buf_size,
 			(uint32_t)(scatter_buf_ptr -
 			(uint8_t *)(soc->wbm_idle_scatter_buf_base_vaddr[
-			scatter_buf_num])), total_link_descs);
+			scatter_buf_num-1])), total_link_descs);
 	}
 	return 0;
 
@@ -7920,6 +7920,10 @@ dp_print_host_stats(struct dp_vdev *vdev,
 		hal_dump_reg_write_stats(pdev->soc->hal_soc);
 		hal_dump_reg_write_srng_stats(pdev->soc->hal_soc);
 		break;
+	case TXRX_SOC_REO_HW_DESC_DUMP:
+		dp_get_rx_reo_queue_info((struct cdp_soc_t *)pdev->soc,
+					 vdev->vdev_id);
+		break;
 	default:
 		dp_info("Wrong Input For TxRx Host Stats");
 		dp_txrx_stats_help();
@@ -10170,6 +10174,15 @@ static uint32_t dp_get_cfg(struct cdp_soc_t *soc, enum cdp_dp_cfg cfg)
 		break;
 	case cfg_dp_gro_enable:
 		value = dpsoc->wlan_cfg_ctx->gro_enabled;
+		break;
+	case cfg_dp_sg_enable:
+		value = dpsoc->wlan_cfg_ctx->sg_enabled;
+		break;
+	case cfg_dp_tc_based_dyn_gro_enable:
+		value = dpsoc->wlan_cfg_ctx->tc_based_dynamic_gro;
+		break;
+	case cfg_dp_tc_ingress_prio:
+		value = dpsoc->wlan_cfg_ctx->tc_ingress_prio;
 		break;
 	case cfg_dp_tx_flow_start_queue_offset:
 		value = dpsoc->wlan_cfg_ctx->tx_flow_start_queue_offset;

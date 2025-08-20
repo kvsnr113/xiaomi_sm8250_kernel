@@ -2,7 +2,6 @@ CONFIG_CNSS_QCA6390 := y
 CONFIG_BUS_AUTO_SUSPEND := y
 CONFIG_DIRECT_BUF_RX_ENABLE := y
 CONFIG_WMI_DBR_SUPPORT := y
-CONFIG_RX_PERFORMANCE := y
 
 ifeq ($(CONFIG_CNSS_QCA6390), y)
 	ifeq ($(CONFIG_CNSS_EMULATION), y)
@@ -13,9 +12,6 @@ ifeq ($(CONFIG_CNSS_QCA6390), y)
 	CONFIG_WLAN_FEATURE_DFS_OFFLOAD := y
 	CONFIG_IPA3 := n
 	CONFIG_SCALE_INCLUDES := y
-	CONFIG_MORE_TX_DESC := y
-	CONFIG_FW_THERMAL_THROTTLE := y
-	CONFIG_WLAN_FEATURE_MBSSID := y
 endif
 
 ifeq ($(CONFIG_ENABLE_IPA), y)
@@ -57,7 +53,7 @@ endif
 endif
 
 # Make WLAN as open-source driver by default
-WLAN_OPEN_SOURCE := n
+WLAN_OPEN_SOURCE := y
 
 ifeq ($(CONFIG_ICNSS), y)
 	CONFIG_HELIUMPLUS := y
@@ -269,6 +265,13 @@ CONFIG_LFR_SUBNET_DETECTION := y
 # Flag to enable MCC to SCC switch feature
 CONFIG_MCC_TO_SCC_SWITCH := y
 
+ifeq ($(CONFIG_SLUB_DEBUG), y)
+	# Enable Obj Mgr Degug services if slub build
+	CONFIG_WLAN_OBJMGR_DEBUG:= y
+	CONFIG_MPC_UT_FRAMEWORK := y
+	CONFIG_LOCK_STATS_ON:= y
+endif
+
 ifeq (y,$(findstring y,$(CONFIG_QCA_WIFI_SDIO) $(CONFIG_HIF_USB)))
 CONFIG_HL_DP_SUPPORT := y
 else
@@ -290,7 +293,7 @@ ifeq ($(CONFIG_ICNSS), y)
 CONFIG_WIFI_3_0_ADRASTEA := y
 CONFIG_ADRASTEA_RRI_ON_DDR := y
 # Enable athdiag procfs debug support for adrastea
-CONFIG_ATH_PROCFS_DIAG_SUPPORT := n
+CONFIG_ATH_PROCFS_DIAG_SUPPORT := y
 # Enable 11AC TX compact feature for adrastea
 CONFIG_ATH_11AC_TXCOMPACT := y
 ifeq ($(CONFIG_QMI_SUPPORT), y)
@@ -332,14 +335,13 @@ CONFIG_QCA_WIFI_QCA8074 := y
 CONFIG_QCA_WIFI_QCA8074_VP := y
 CONFIG_DP_INTR_POLL_BASED := y
 CONFIG_TX_PER_PDEV_DESC_POOL := y
-CONFIG_DP_TRACE := n
+CONFIG_DP_TRACE := y
 CONFIG_FEATURE_TSO := y
 CONFIG_DP_LFR := y
 CONFIG_HTT_PADDR64 := y
 CONFIG_RX_OL := y
 CONFIG_TX_TID_OVERRIDE := y
 CONFIG_DP_TXRX_SOC_ATTACH := y
-CONFIG_REO_DESC_DEFER_FREE := y
 endif
 
 # As per target team, build is done as follows:
@@ -366,13 +368,22 @@ ifneq ($(TARGET_BUILD_VARIANT),user)
 	CONFIG_WLAN_DEBUG_CRASH_INJECT := y
 endif
 
+#Enable WLAN/Power debugfs feature only if debug_fs is enabled
+ifeq ($(CONFIG_DEBUG_FS), y)
+       # Flag to enable debugfs. Depends on CONFIG_DEBUG_FS in kernel
+       # configuration.
+       CONFIG_WLAN_DEBUGFS := y
+
+       CONFIG_WLAN_POWER_DEBUGFS := y
+endif
+
 # Feature flags which are not (currently) configurable via Kconfig
 
 #Whether to build debug version
-BUILD_DEBUG_VERSION := n
+BUILD_DEBUG_VERSION := y
 
 #Enable this flag to build driver in diag version
-BUILD_DIAG_VERSION := n
+BUILD_DIAG_VERSION := y
 
 ifeq ($(CONFIG_SLUB_DEBUG), y)
 	PANIC_ON_BUG := y
@@ -386,16 +397,16 @@ else
 endif
 
 # Compile all log levels by default
-CONFIG_WLAN_LOG_FATAL := n
-CONFIG_WLAN_LOG_ERROR := n
-CONFIG_WLAN_LOG_WARN := n
-CONFIG_WLAN_LOG_INFO := n
+CONFIG_WLAN_LOG_FATAL := y
+CONFIG_WLAN_LOG_ERROR := y
+CONFIG_WLAN_LOG_WARN := y
+CONFIG_WLAN_LOG_INFO := y
 
 #Enable OL debug and wmi unified functions
 CONFIG_ATH_PERF_PWR_OFFLOAD := y
 
 #Disable packet log
-CONFIG_REMOVE_PKT_LOG := y
+CONFIG_REMOVE_PKT_LOG := n
 
 #Enable 11AC TX
 ifeq ($(CONFIG_ROME_IF),pci)
@@ -517,10 +528,6 @@ ifeq ($(CONFIG_IPA3), y)
 CONFIG_IPA_OFFLOAD := y
 endif
 
-ifeq ($(CONFIG_IPA_OFFLOAD), y)
-CONFIG_SMMU_S1_UNMAP := y
-endif
-
 #Flag to enable SMMU S1 support
 ifeq ($(CONFIG_ARCH_SDM845), y)
 ifeq ($(CONFIG_IPA_OFFLOAD), y)
@@ -569,10 +576,10 @@ CONFIG_WLAN_LOGGING_BUFFERS_DYNAMICALLY := n
 CONFIG_WLAN_DFS_STATIC_MEM_ALLOC := y
 
 #Flag to enable HTC credit history feature
-CONFIG_FEATURE_HTC_CREDIT_HISTORY := n
+CONFIG_FEATURE_HTC_CREDIT_HISTORY := y
 
 #Flag to enable MTRACE feature
-CONFIG_TRACE_RECORD_FEATURE := n
+CONFIG_TRACE_RECORD_FEATURE := y
 
 #Flag to enable DFS Master feature
 CONFIG_WLAN_DFS_MASTER_ENABLE := y
@@ -611,9 +618,9 @@ CONFIG_WLAN_NS_OFFLOAD := y
 CONFIG_FEATURE_WLAN_RA_FILTERING:= y
 CONFIG_FEATURE_WLAN_LPHB := y
 CONFIG_QCA_SUPPORT_TX_THROTTLE := y
-CONFIG_WMI_INTERFACE_EVENT_LOGGING := n
+CONFIG_WMI_INTERFACE_EVENT_LOGGING := y
 CONFIG_WLAN_FEATURE_LINK_LAYER_STATS := y
-CONFIG_WLAN_FEATURE_MIB_STATS := n
+CONFIG_WLAN_FEATURE_MIB_STATS := y
 CONFIG_FEATURE_WLAN_EXTSCAN := n
 CONFIG_WMI_BCN_OFFLOAD := y
 CONFIG_160MHZ_SUPPORT := y
@@ -664,7 +671,7 @@ CONFIG_HOST_OPCLASS := y
 
 ifeq ($(CONFIG_HELIUMPLUS), y)
 ifneq ($(CONFIG_FORCE_ALLOC_FROM_DMA_ZONE), y)
-CONFIG_ENABLE_DEBUG_ADDRESS_MARKING := n
+CONFIG_ENABLE_DEBUG_ADDRESS_MARKING := y
 endif
 CONFIG_RX_OL := y
 endif
@@ -707,13 +714,20 @@ endif
 
 ifeq ($(CONFIG_ARCH_SDXPRAIRIE), y)
 	CONFIG_FEATURE_MONITOR_MODE_SUPPORT := n
+	ifneq ($(CONFIG_SLUB_DEBUG), y)
+		CONFIG_DP_TRACE := n
+	endif
 endif
 
 ifneq ($(CONFIG_HIF_USB), y)
-ifeq ($(BUILD_DEBUG_VERSION), 1)
 CONFIG_WLAN_LOGGING_SOCK_SVC := y
 endif
+
+ifneq ($(TARGET_BUILD_VARIANT),user)
+CONFIG_DESC_DUP_DETECT_DEBUG := y
+CONFIG_DEBUG_RX_RING_BUFFER := y
 endif
+
 
 ifeq ($(CONFIG_CNSS), y)
 ifeq ($(CONFIG_CNSS_SDIO), y)
@@ -757,19 +771,3 @@ CONFIG_SAP_DHCP_FW_IND := y
 #Enable FW Offload
 CONFIG_WLAN_FW_OFFLOAD := y
 
-#Enable Desc Debug Check
-CONFIG_RX_DESC_DEBUG_CHECK := y
-
-#Enable Power Debug
-CONFIG_WLAN_POWER_DEBUG := y
-
-#Flag to enable/disable TARGET 11d scan
-CONFIG_TARGET_11D_SCAN := y
-
-# Disable packet logging to stop wasting memory
-CONFIG_SLUB_MEM_OPTIMIZE := y
-
-# Disable DFS channels on AP mode to avoid DFS CAC
-CONFIG_FEATURE_WLAN_STA_AP_MODE_DFS_DISABLE := y
-
-CONFIG_WLAN_DP_PENDING_MEM_FLUSH := y
