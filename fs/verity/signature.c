@@ -137,7 +137,8 @@ extern const int sysctl_vals[];
 
 #define SYSCTL_ZERO	((void *)&sysctl_vals[0])
 #define SYSCTL_ONE	((void *)&sysctl_vals[1])
-#define SYSCTL_INT_MAX	((void *)&sysctl_vals[2])
+#define SYSCTL_TWO      ((void *)&sysctl_vals[2])
+#define SYSCTL_INT_MAX	((void *)&sysctl_vals[3])
 
 static struct ctl_table fsverity_sysctl_table[] = {
 	{
