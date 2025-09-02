@@ -697,8 +697,8 @@ KBUILD_CFLAGS   += -mllvm -regalloc-enable-advisor=release
 KBUILD_LDFLAGS  += -mllvm -regalloc-enable-advisor=release
 KBUILD_LDFLAGS  += -mllvm -enable-ml-inliner=release
 
-KBUILD_CFLAGS   += -O3 -march=armv8.2-a+lse+crypto+dotprod+fp16 -mcpu=cortex-a55
-KBUILD_AFLAGS   += -O3 -march=armv8.2-a+lse+crypto+dotprod+fp16 -mcpu=cortex-a55
+KBUILD_CFLAGS   += -O3 -march=armv8.2-a+lse+crypto+dotprod -mcpu=cortex-a55
+KBUILD_AFLAGS   += -O3 -march=armv8.2-a+lse+crypto+dotprod -mcpu=cortex-a55
 KBUILD_LDFLAGS  += -O3 --plugin-opt=O3
 ifeq ($(CONFIG_LD_IS_LLD), y)
 KBUILD_LDFLAGS  += -mllvm -mcpu=cortex-a55
