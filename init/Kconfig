@@ -1913,8 +1913,7 @@ config ARCH_HAS_MEMBARRIER_SYNC_CORE
 	bool
 
 config RSEQ
-	bool "Enable rseq() system call" if EXPERT
-	default y
+	bool "Enable rseq() system call"
 	depends on HAVE_RSEQ
 	select MEMBARRIER
 	help
