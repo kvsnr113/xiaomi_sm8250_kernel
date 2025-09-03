@@ -64,9 +64,6 @@ bool ksu_vfs_read_hook __read_mostly = true;
 bool ksu_execveat_hook __read_mostly = true;
 bool ksu_input_hook __read_mostly = true;
 
-#ifdef CONFIG_KSU_SUSFS_SUS_SU
-bool susfs_is_sus_su_ready = false;
-#endif // #ifdef CONFIG_KSU_SUSFS_SUS_SU
 
 u32 ksu_devpts_sid;
 
@@ -74,15 +71,15 @@ u32 ksu_devpts_sid;
 bool ksu_is_compat __read_mostly = false;
 #endif
 
-void ksu_on_post_fs_data(void)
+void on_post_fs_data(void)
 {
 	static bool done = false;
 	if (done) {
-		pr_info("ksu_on_post_fs_data already done\n");
+		pr_info("on_post_fs_data already done\n");
 		return;
 	}
 	done = true;
-	pr_info("ksu_on_post_fs_data!\n");
+	pr_info("on_post_fs_data!\n");
 	ksu_load_allow_list();
 	// sanity check, this may influence the performance
 	stop_input_hook();
@@ -204,9 +201,10 @@ int ksu_handle_execveat_ksud(int *fd, struct filename **filename_ptr,
 					first_arg, p, sizeof(first_arg));
 				pr_info("/system/bin/init first arg: %s\n",
 					first_arg);
-				if (!strcmp(first_arg, "second_stage")) {
+				if (!strcmp(first_arg, "second_stage") || 
+				    (argc == 2 && !strcmp(first_arg, ""))) {
 					pr_info("/system/bin/init second_stage executed\n");
-					ksu_apply_kernelsu_rules();
+					apply_kernelsu_rules();
 					init_second_stage_executed = true;
 					ksu_android_ns_fs_check();
 				}
@@ -230,7 +228,7 @@ int ksu_handle_execveat_ksud(int *fd, struct filename **filename_ptr,
 				pr_info("/init first arg: %s\n", first_arg);
 				if (!strcmp(first_arg, "--second-stage")) {
 					pr_info("/init second_stage executed\n");
-					ksu_apply_kernelsu_rules();
+					apply_kernelsu_rules();
 					init_second_stage_executed = true;
 					ksu_android_ns_fs_check();
 				}
@@ -267,7 +265,7 @@ int ksu_handle_execveat_ksud(int *fd, struct filename **filename_ptr,
 					    (!strcmp(env_value, "1") ||
 					     !strcmp(env_value, "true"))) {
 						pr_info("/init second_stage executed\n");
-						ksu_apply_kernelsu_rules();
+						apply_kernelsu_rules();
 						init_second_stage_executed =
 							true;
 						ksu_android_ns_fs_check();
@@ -282,7 +280,7 @@ int ksu_handle_execveat_ksud(int *fd, struct filename **filename_ptr,
 		first_app_process = false;
 		pr_info("exec app_process, /data prepared, second_stage: %d\n",
 			init_second_stage_executed);
-		ksu_on_post_fs_data(); // we keep this for old ksud
+		on_post_fs_data(); // we keep this for old ksud
 		stop_execve_hook();
 	}
 
@@ -341,7 +339,7 @@ int ksu_handle_vfs_read(struct file **file_ptr, char __user **buf_ptr,
 		return 0;
 	}
 
-	if (!d_is_reg(file->f_path.dentry)) {
+	if (!S_ISREG(file->f_path.dentry->d_inode->i_mode)) {
 		return 0;
 	}
 
@@ -399,10 +397,12 @@ int ksu_handle_vfs_read(struct file **file_ptr, char __user **buf_ptr,
 	if (orig_read) {
 		fops_proxy.read = read_proxy;
 	}
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 16, 0) 
 	orig_read_iter = file->f_op->read_iter;
 	if (orig_read_iter) {
 		fops_proxy.read_iter = read_iter_proxy;
 	}
+#endif
 	// replace the file_operations
 	file->f_op = &fops_proxy;
 	read_count_append = rc_count;
@@ -635,6 +635,29 @@ static void do_stop_input_hook(struct work_struct *work)
 }
 #endif
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)
+#include "objsec.h" // task_security_struct
+bool is_ksu_transition(const struct task_security_struct *old_tsec,
+			const struct task_security_struct *new_tsec)
+{
+	static u32 ksu_sid;
+	char *secdata;
+	u32 seclen;
+	bool allowed = false;
+
+	if (!ksu_sid)
+		security_secctx_to_secid("u:r:su:s0", strlen("u:r:su:s0"), &ksu_sid);
+
+	if (security_secid_to_secctx(old_tsec->sid, &secdata, &seclen))
+		return false;
+
+	allowed = (!strcmp("u:r:init:s0", secdata) && new_tsec->sid == ksu_sid);
+	security_release_secctx(secdata, seclen);
+	
+	return allowed;
+}
+#endif
+
 static void stop_vfs_read_hook()
 {
 #ifdef CONFIG_KSU_KPROBES_HOOK
@@ -654,10 +677,6 @@ static void stop_execve_hook()
 #else
 	ksu_execveat_hook = false;
 	pr_info("stop execve_hook\n");
-#endif
-#ifdef CONFIG_KSU_SUSFS_SUS_SU
-	susfs_is_sus_su_ready = true;
-	pr_info("susfs: sus_su is ready\n");
 #endif
 }
 
