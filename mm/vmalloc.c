@@ -24,7 +24,7 @@
 #include <linux/list.h>
 #include <linux/notifier.h>
 #include <linux/rbtree.h>
-#include <linux/xarray.h>
+#include <linux/radix-tree.h>
 #include <linux/rcupdate.h>
 #include <linux/pfn.h>
 #include <linux/kmemleak.h>
@@ -400,10 +400,8 @@ compute_subtree_max_size(struct vmap_area *va)
 RB_DECLARE_CALLBACKS_MAX(static, free_vmap_area_rb_augment_cb,
 	struct vmap_area, rb_node, unsigned long, subtree_max_size, va_size)
 
-static void reclaim_and_purge_vmap_areas(void);
+static void purge_vmap_area_lazy(void);
 static BLOCKING_NOTIFIER_HEAD(vmap_notify_list);
-static void drain_vmap_area_work(struct work_struct *work);
-static DECLARE_WORK(drain_vmap_work, drain_vmap_area_work);
 static unsigned long lazy_max_pages(void);
 
 static atomic_long_t nr_vmalloc_pages;
@@ -1148,7 +1146,7 @@ retry:
 
 overflow:
 	if (!purged) {
-		reclaim_and_purge_vmap_areas();
+		purge_vmap_area_lazy();
 		purged = 1;
 		goto retry;
 	}
@@ -1315,29 +1313,26 @@ static bool __purge_vmap_area_lazy(unsigned long start, unsigned long end)
 }
 
 /*
- * Reclaim vmap areas by purging fragmented blocks and purge_vmap_area_list.
+ * Kick off a purge of the outstanding lazy areas. Don't bother if somebody
+ * is already purging.
  */
-static void reclaim_and_purge_vmap_areas(void)
+static void try_purge_vmap_area_lazy(void)
+{
+	if (mutex_trylock(&vmap_purge_lock)) {
+		__purge_vmap_area_lazy(ULONG_MAX, 0);
+		mutex_unlock(&vmap_purge_lock);
+	}
+}
 
+/*
+ * Kick off a purge of the outstanding lazy areas.
+ */
+static void purge_vmap_area_lazy(void)
 {
 	mutex_lock(&vmap_purge_lock);
 	purge_fragmented_blocks_allcpus();
 	__purge_vmap_area_lazy(ULONG_MAX, 0);
 	mutex_unlock(&vmap_purge_lock);
-}
-
-static void drain_vmap_area_work(struct work_struct *work)
-{
-	unsigned long nr_lazy;
-
-	do {
-		mutex_lock(&vmap_purge_lock);
-		__purge_vmap_area_lazy(ULONG_MAX, 0);
-		mutex_unlock(&vmap_purge_lock);
-
-		/* Recheck if further work is required. */
-		nr_lazy = atomic_long_read(&vmap_lazy_nr);
-	} while (nr_lazy > lazy_max_pages());
 }
 
 /*
@@ -1360,7 +1355,7 @@ static void free_vmap_area_noflush(struct vmap_area *va)
 	llist_add(&va->purge_list, &vmap_purge_list);
 
 	if (unlikely(nr_lazy > lazy_max_pages()))
-		schedule_work(&drain_vmap_work);
+		try_purge_vmap_area_lazy();
 }
 
 /*
@@ -1417,22 +1412,9 @@ static struct vmap_area *find_vmap_area(unsigned long addr)
 
 #define VMAP_BLOCK_SIZE		(VMAP_BBMAP_BITS * PAGE_SIZE)
 
-/*
- * Purge threshold to prevent overeager purging of fragmented blocks for
- * regular operations: Purge if vb->free is less than 1/4 of the capacity.
- */
-#define VMAP_PURGE_THRESHOLD	(VMAP_BBMAP_BITS / 4)
-
 struct vmap_block_queue {
 	spinlock_t lock;
 	struct list_head free;
-
-	/*
-	 * An xarray requires an extra memory dynamically to
-	 * be allocated. If it is an issue, we can use rb-tree
-	 * instead.
-	 */
-	struct xarray vmap_blocks;
 };
 
 struct vmap_block {
@@ -1443,63 +1425,18 @@ struct vmap_block {
 	struct list_head free_list;
 	struct rcu_head rcu_head;
 	struct list_head purge;
-	unsigned int cpu;
 };
 
 /* Queue of free and dirty vmap blocks, for allocation and flushing purposes */
 static DEFINE_PER_CPU(struct vmap_block_queue, vmap_block_queue);
 
 /*
- * In order to fast access to any "vmap_block" associated with a
- * specific address, we use a hash.
- *
- * A per-cpu vmap_block_queue is used in both ways, to serialize
- * an access to free block chains among CPUs(alloc path) and it
- * also acts as a vmap_block hash(alloc/free paths). It means we
- * overload it, since we already have the per-cpu array which is
- * used as a hash table. When used as a hash a 'cpu' passed to
- * per_cpu() is not actually a CPU but rather a hash index.
- *
- * A hash function is addr_to_vb_xarray() which hashes any address
- * to a specific index(in a hash) it belongs to. This then uses a
- * per_cpu() macro to access an array with generated index.
- *
- * An example:
- *
- *  CPU_1  CPU_2  CPU_0
- *    |      |      |
- *    V      V      V
- * 0     10     20     30     40     50     60
- * |------|------|------|------|------|------|...<vmap address space>
- *   CPU0   CPU1   CPU2   CPU0   CPU1   CPU2
- *
- * - CPU_1 invokes vm_unmap_ram(6), 6 belongs to CPU0 zone, thus
- *   it access: CPU0/INDEX0 -> vmap_blocks -> xa_lock;
- *
- * - CPU_2 invokes vm_unmap_ram(11), 11 belongs to CPU1 zone, thus
- *   it access: CPU1/INDEX1 -> vmap_blocks -> xa_lock;
- *
- * - CPU_0 invokes vm_unmap_ram(20), 20 belongs to CPU2 zone, thus
- *   it access: CPU2/INDEX2 -> vmap_blocks -> xa_lock.
- *
- * This technique almost always avoids lock contention on insert/remove,
- * however xarray spinlocks protect against any contention that remains.
+ * Radix tree of vmap blocks, indexed by address, to quickly find a vmap block
+ * in the free path. Could get rid of this if we change the API to return a
+ * "cookie" from alloc, to be passed to free. But no big deal yet.
  */
-static struct xarray *
-addr_to_vb_xarray(unsigned long addr)
-{
-	int index = (addr / VMAP_BLOCK_SIZE) % nr_cpu_ids;
-
-	/*
-	 * Please note, nr_cpu_ids points on a highest set
-	 * possible bit, i.e. we never invoke cpumask_next()
-	 * if an index points on it which is nr_cpu_ids - 1.
-	 */
-	if (!cpu_possible(index))
-		index = cpumask_next(index, cpu_possible_mask);
-
-	return &per_cpu(vmap_block_queue, index).vmap_blocks;
-}
+static DEFINE_SPINLOCK(vmap_block_tree_lock);
+static RADIX_TREE(vmap_block_tree, GFP_ATOMIC);
 
 /*
  * We should probably have a fallback mechanism to allocate virtual memory
@@ -1537,7 +1474,6 @@ static void *new_vmap_block(unsigned int order, gfp_t gfp_mask)
 	struct vmap_block_queue *vbq;
 	struct vmap_block *vb;
 	struct vmap_area *va;
-	struct xarray *xa;
 	unsigned long vb_idx;
 	int node, err;
 	void *vaddr;
@@ -1557,6 +1493,13 @@ static void *new_vmap_block(unsigned int order, gfp_t gfp_mask)
 		return ERR_CAST(va);
 	}
 
+	err = radix_tree_preload(gfp_mask);
+	if (unlikely(err)) {
+		kfree(vb);
+		free_vmap_area(va);
+		return ERR_PTR(err);
+	}
+
 	vaddr = vmap_block_vaddr(va->va_start, 0);
 	spin_lock_init(&vb->lock);
 	vb->va = va;
@@ -1567,27 +1510,19 @@ static void *new_vmap_block(unsigned int order, gfp_t gfp_mask)
 	vb->dirty_min = VMAP_BBMAP_BITS;
 	vb->dirty_max = 0;
 	INIT_LIST_HEAD(&vb->free_list);
-	vb->cpu = raw_smp_processor_id();
 
-	xa = addr_to_vb_xarray(va->va_start);
 	vb_idx = addr_to_vb_idx(va->va_start);
-	err = xa_insert(xa, vb_idx, vb, gfp_mask);
-	if (err) {
-		kfree(vb);
-		free_vmap_area(va);
-		return ERR_PTR(err);
-	}
-	/*
-	 * list_add_tail_rcu could happened in another core
-	 * rather than vb->cpu due to task migration, which
-	 * is safe as list_add_tail_rcu will ensure the list's
-	 * integrity together with list_for_each_rcu from read
-	 * side.
-	 */
-	vbq = per_cpu_ptr(&vmap_block_queue, vb->cpu);
+	spin_lock(&vmap_block_tree_lock);
+	err = radix_tree_insert(&vmap_block_tree, vb_idx, vb);
+	spin_unlock(&vmap_block_tree_lock);
+	BUG_ON(err);
+	radix_tree_preload_end();
+
+	vbq = &get_cpu_var(vmap_block_queue);
 	spin_lock(&vbq->lock);
 	list_add_tail_rcu(&vb->free_list, &vbq->free);
 	spin_unlock(&vbq->lock);
+	put_cpu_var(vmap_block_queue);
 
 	return vaddr;
 }
@@ -1595,73 +1530,51 @@ static void *new_vmap_block(unsigned int order, gfp_t gfp_mask)
 static void free_vmap_block(struct vmap_block *vb)
 {
 	struct vmap_block *tmp;
-	struct xarray *xa;
+	unsigned long vb_idx;
 
-	xa = addr_to_vb_xarray(vb->va->va_start);
-	tmp = xa_erase(xa, addr_to_vb_idx(vb->va->va_start));
+	vb_idx = addr_to_vb_idx(vb->va->va_start);
+	spin_lock(&vmap_block_tree_lock);
+	tmp = radix_tree_delete(&vmap_block_tree, vb_idx);
+	spin_unlock(&vmap_block_tree_lock);
 	BUG_ON(tmp != vb);
 
 	free_vmap_area_noflush(vb->va);
 	kfree_rcu(vb, rcu_head);
 }
 
-static bool purge_fragmented_block(struct vmap_block *vb,
-		struct list_head *purge_list, bool force_purge)
-{
-	struct vmap_block_queue *vbq = &per_cpu(vmap_block_queue, vb->cpu);
-
-	if (vb->free + vb->dirty != VMAP_BBMAP_BITS ||
-	    vb->dirty == VMAP_BBMAP_BITS)
-		return false;
-
-	/* Don't overeagerly purge usable blocks unless requested */
-	if (!(force_purge || vb->free < VMAP_PURGE_THRESHOLD))
-		return false;
-
-	/* prevent further allocs after releasing lock */
-	WRITE_ONCE(vb->free, 0);
-	/* prevent purging it again */
-	WRITE_ONCE(vb->dirty, VMAP_BBMAP_BITS);
-	vb->dirty_min = 0;
-	vb->dirty_max = VMAP_BBMAP_BITS;
-	spin_lock(&vbq->lock);
-	list_del_rcu(&vb->free_list);
-	spin_unlock(&vbq->lock);
-	list_add_tail(&vb->purge, purge_list);
-	return true;
-}
-
-static void free_purged_blocks(struct list_head *purge_list)
-{
-	struct vmap_block *vb, *n_vb;
-
-	list_for_each_entry_safe(vb, n_vb, purge_list, purge) {
-		list_del(&vb->purge);
-		free_vmap_block(vb);
-	}
-}
-
 static void purge_fragmented_blocks(int cpu)
 {
 	LIST_HEAD(purge);
 	struct vmap_block *vb;
+	struct vmap_block *n_vb;
 	struct vmap_block_queue *vbq = &per_cpu(vmap_block_queue, cpu);
 
 	rcu_read_lock();
 	list_for_each_entry_rcu(vb, &vbq->free, free_list) {
-		unsigned long free = READ_ONCE(vb->free);
-		unsigned long dirty = READ_ONCE(vb->dirty);
 
-		if (free + dirty != VMAP_BBMAP_BITS ||
-		    dirty == VMAP_BBMAP_BITS)
+		if (!(vb->free + vb->dirty == VMAP_BBMAP_BITS && vb->dirty != VMAP_BBMAP_BITS))
 			continue;
 
 		spin_lock(&vb->lock);
-		purge_fragmented_block(vb, &purge, true);
-		spin_unlock(&vb->lock);
+		if (vb->free + vb->dirty == VMAP_BBMAP_BITS && vb->dirty != VMAP_BBMAP_BITS) {
+			vb->free = 0; /* prevent further allocs after releasing lock */
+			vb->dirty = VMAP_BBMAP_BITS; /* prevent purging it again */
+			vb->dirty_min = 0;
+			vb->dirty_max = VMAP_BBMAP_BITS;
+			spin_lock(&vbq->lock);
+			list_del_rcu(&vb->free_list);
+			spin_unlock(&vbq->lock);
+			spin_unlock(&vb->lock);
+			list_add_tail(&vb->purge, &purge);
+		} else
+			spin_unlock(&vb->lock);
 	}
 	rcu_read_unlock();
-	free_purged_blocks(&purge);
+
+	list_for_each_entry_safe(vb, n_vb, &purge, purge) {
+		list_del(&vb->purge);
+		free_vmap_block(vb);
+	}
 }
 
 static void purge_fragmented_blocks_allcpus(void)
@@ -1692,12 +1605,9 @@ static void *vb_alloc(unsigned long size, gfp_t gfp_mask)
 	order = get_order(size);
 
 	rcu_read_lock();
-	vbq = raw_cpu_ptr(&vmap_block_queue);
+	vbq = &get_cpu_var(vmap_block_queue);
 	list_for_each_entry_rcu(vb, &vbq->free, free_list) {
 		unsigned long pages_off;
-
-		if (READ_ONCE(vb->free) < (1UL << order))
-			continue;
 
 		spin_lock(&vb->lock);
 		if (vb->free < (1UL << order)) {
@@ -1707,7 +1617,7 @@ static void *vb_alloc(unsigned long size, gfp_t gfp_mask)
 
 		pages_off = VMAP_BBMAP_BITS - vb->free;
 		vaddr = vmap_block_vaddr(vb->va->va_start, pages_off);
-		WRITE_ONCE(vb->free, vb->free - (1UL << order));
+		vb->free -= 1UL << order;
 		if (vb->free == 0) {
 			spin_lock(&vbq->lock);
 			list_del_rcu(&vb->free_list);
@@ -1718,6 +1628,7 @@ static void *vb_alloc(unsigned long size, gfp_t gfp_mask)
 		break;
 	}
 
+	put_cpu_var(vmap_block_queue);
 	rcu_read_unlock();
 
 	/* Allocate new block if nothing was found */
@@ -1730,9 +1641,9 @@ static void *vb_alloc(unsigned long size, gfp_t gfp_mask)
 static void vb_free(const void *addr, unsigned long size)
 {
 	unsigned long offset;
+	unsigned long vb_idx;
 	unsigned int order;
 	struct vmap_block *vb;
-	struct xarray *xa;
 
 	BUG_ON(offset_in_page(size));
 	BUG_ON(size > PAGE_SIZE*VMAP_MAX_ALLOC);
@@ -1740,11 +1651,15 @@ static void vb_free(const void *addr, unsigned long size)
 	flush_cache_vunmap((unsigned long)addr, (unsigned long)addr + size);
 
 	order = get_order(size);
+
 	offset = (unsigned long)addr & (VMAP_BLOCK_SIZE - 1);
 	offset >>= PAGE_SHIFT;
 
-	xa = addr_to_vb_xarray((unsigned long)addr);
-	vb = xa_load(xa, addr_to_vb_idx((unsigned long)addr));
+	vb_idx = addr_to_vb_idx((unsigned long)addr);
+	rcu_read_lock();
+	vb = radix_tree_lookup(&vmap_block_tree, vb_idx);
+	rcu_read_unlock();
+	BUG_ON(!vb);
 
 	vunmap_page_range((unsigned long)addr, (unsigned long)addr + size);
 
@@ -1754,11 +1669,11 @@ static void vb_free(const void *addr, unsigned long size)
 
 	spin_lock(&vb->lock);
 
-	/* Expand the not yet TLB flushed dirty range */
+	/* Expand dirty range */
 	vb->dirty_min = min(vb->dirty_min, offset);
 	vb->dirty_max = max(vb->dirty_max, offset + (1UL << order));
 
-	WRITE_ONCE(vb->dirty, vb->dirty + (1UL << order));
+	vb->dirty += 1UL << order;
 	if (vb->dirty == VMAP_BBMAP_BITS) {
 		BUG_ON(vb->free);
 		spin_unlock(&vb->lock);
@@ -1769,30 +1684,21 @@ static void vb_free(const void *addr, unsigned long size)
 
 static void _vm_unmap_aliases(unsigned long start, unsigned long end, int flush)
 {
-	LIST_HEAD(purge_list);
 	int cpu;
 
 	if (unlikely(!vmap_initialized))
 		return;
 
-	mutex_lock(&vmap_purge_lock);
+	might_sleep();
 
 	for_each_possible_cpu(cpu) {
 		struct vmap_block_queue *vbq = &per_cpu(vmap_block_queue, cpu);
 		struct vmap_block *vb;
-		unsigned long idx;
 
 		rcu_read_lock();
-		xa_for_each(&vbq->vmap_blocks, idx, vb) {
+		list_for_each_entry_rcu(vb, &vbq->free, free_list) {
 			spin_lock(&vb->lock);
-
-			/*
-			 * Try to purge a fragmented block first. If it's
-			 * not purgeable, check whether there is dirty
-			 * space to be flushed.
-			 */
-			if (!purge_fragmented_block(vb, &purge_list, false) &&
-			    vb->dirty_max && vb->dirty != VMAP_BBMAP_BITS) {
+			if (vb->dirty) {
 				unsigned long va_start = vb->va->va_start;
 				unsigned long s, e;
 
@@ -1802,18 +1708,15 @@ static void _vm_unmap_aliases(unsigned long start, unsigned long end, int flush)
 				start = min(s, start);
 				end   = max(e, end);
 
-				/* Prevent that this is flushed again */
-				vb->dirty_min = VMAP_BBMAP_BITS;
-				vb->dirty_max = 0;
-
 				flush = 1;
 			}
 			spin_unlock(&vb->lock);
 		}
 		rcu_read_unlock();
 	}
-	free_purged_blocks(&purge_list);
 
+	mutex_lock(&vmap_purge_lock);
+	purge_fragmented_blocks_allcpus();
 	if (!__purge_vmap_area_lazy(start, end) && flush)
 		flush_tlb_kernel_range(start, end);
 	mutex_unlock(&vmap_purge_lock);
@@ -2803,6 +2706,26 @@ void *vzalloc_node(unsigned long size, int node)
 EXPORT_SYMBOL(vzalloc_node);
 
 /**
+ * vmalloc_user_node_flags - allocate memory for userspace on a specific node
+ * @size: allocation size
+ * @node: numa node
+ * @flags: flags for the page level allocator
+ *
+ * The resulting memory area is zeroed so it can be mapped to userspace
+ * without leaking data.
+ *
+ * Return: pointer to the allocated memory or %NULL on error
+ */
+void *vmalloc_user_node_flags(unsigned long size, int node, gfp_t flags)
+{
+	return __vmalloc_node_range(size, SHMLBA,  VMALLOC_START, VMALLOC_END,
+				    flags | __GFP_ZERO, PAGE_KERNEL,
+				    VM_USERMAP, node,
+				    __builtin_return_address(0));
+}
+EXPORT_SYMBOL(vmalloc_user_node_flags);
+
+/**
  * vmalloc_exec - allocate virtually contiguous, executable memory
  * @size:	  allocation size
  *
@@ -3520,7 +3443,7 @@ recovery:
 overflow:
 	spin_unlock(&free_vmap_area_lock);
 	if (!purged) {
-		reclaim_and_purge_vmap_areas();
+		purge_vmap_area_lazy();
 		purged = true;
 
 		/* Before "retry", check if we recover. */
