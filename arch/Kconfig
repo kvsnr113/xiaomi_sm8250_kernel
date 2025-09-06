@@ -443,7 +443,6 @@ config STACKPROTECTOR
 	bool "Stack Protector buffer overflow detection"
 	depends on HAVE_STACKPROTECTOR
 	depends on $(cc-option,-fstack-protector)
-	default y
 	help
 	  This option turns on the "stack-protector" GCC feature. This
 	  feature puts, at the beginning of functions, a canary value on
@@ -467,7 +466,6 @@ config STACKPROTECTOR_STRONG
 	bool "Strong Stack Protector"
 	depends on STACKPROTECTOR
 	depends on $(cc-option,-fstack-protector-strong)
-	default y
 	help
 	  Functions will have the stack-protector canary logic added in any
 	  of the following conditions:
