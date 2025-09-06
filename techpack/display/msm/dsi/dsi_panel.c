@@ -2063,12 +2063,12 @@ static int dsi_panel_parse_phy_props(struct dsi_panel *panel)
 	const char *name = panel->name;
 
 #ifdef CONFIG_E404_SIGNATURE
-    if (e404_data.e404_rom_type == 1) {
+    if (e404_data.e404_dtbo_type == 1) {
         props->panel_width_mm = e404_data.e404_panel_width;
 		pr_alert("E404: Overriding DTBO panel width for rom type 1");
 		props->panel_height_mm = e404_data.e404_panel_height;
 		pr_alert("E404: Overriding DTBO panel height for rom type 1");
-    } else if (e404_data.e404_rom_type == 2) {
+    } else if (e404_data.e404_dtbo_type == 2) {
 		props->panel_width_mm = e404_data.e404_oem_panel_width;
 		pr_alert("E404: Overriding DTBO panel width for rom type 2");
 		props->panel_height_mm = e404_data.e404_oem_panel_height;

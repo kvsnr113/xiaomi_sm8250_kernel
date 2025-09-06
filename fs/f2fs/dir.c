@@ -954,7 +954,7 @@ void f2fs_delete_entry(struct f2fs_dir_entry *dentry, struct page *page,
 		inode_dec_dirty_pages(dir);
 		f2fs_remove_dirty_inode(dir);
 
-		detach_page_private(page);
+		detach_page_private_f2fs(page);
 		set_page_private(page, 0);
 	}
 	f2fs_put_page(page, 1);

@@ -18,13 +18,6 @@ config E404_KSU_DEFAULT
 	help
 	  Enabling this will utilize KernelSU to load upon boot.
 
-config E404_MIUI_DTBO_DEFAULT
-	bool "E404 MIUI/HyperOS DTBO default"
-	depends on E404_SIGNATURE
-	default n
-	help
-	  Enabling this will utilize needed DTBO physical height and width for MIUI/HyperOS rom upon boot.
-
 config E404_EFFCPU_DEFAULT
 	bool "E404 EFFCPU default"
 	depends on E404_SIGNATURE

@@ -89,7 +89,7 @@ bool f2fs_is_compressed_page(struct page *page)
 static void f2fs_set_compressed_page(struct page *page,
 		struct inode *inode, pgoff_t index, void *data)
 {
-	attach_page_private(page, (void *)data);
+	attach_page_private_f2fs(page, (void *)data);
 
 	/* i_crypto_info and iv index */
 	page->index = index;
@@ -565,7 +565,7 @@ static void f2fs_compress_free_page(struct page *page)
 {
 	if (!page)
 		return;
-	detach_page_private(page);
+	detach_page_private_f2fs(page);
 	page->mapping = NULL;
 	unlock_page(page);
 	mempool_free(page, compress_page_pool);

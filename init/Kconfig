@@ -1197,6 +1197,24 @@ config SCHED_CORE_CTL
 
 	  If unsure, say N here.
 
+config E404_OPLUS
+	bool "Build E404 for Oplus Rom"
+	default n
+	select OPLUS_OPROJECT
+	select OPLUS_NANDSWAP
+	select OPLUS_NWPOWER
+	select OPLUS_SUBSYS_SLEEP_MONITOR
+	select OPLUS_WAKELOCK_PROFILER
+	select OPLUS_OEXT4
+	select OPLUS_EXT4_ASYNC_DISCARD
+	select OPLUS_EXT4_FRAGMENT
+	select OPLUS_EXT4_FSYNC
+	select OPLUS_FEATURE_EROFS
+
+config E404_MIUI
+	bool "Build E404 for MIUI/Hyperos Rom"
+	default n
+
 menuconfig NAMESPACES
 	bool "Namespaces support" if EXPERT
 	depends on MULTIUSER

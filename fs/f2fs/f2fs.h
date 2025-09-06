@@ -3489,7 +3489,7 @@ static inline bool __is_valid_data_blkaddr(block_t blkaddr)
  * Attaching private data to a page increments the page's reference count.
  * The data must be detached before the page will be freed.
  */
-static inline void attach_page_private(struct page *page, void *data)
+static inline void attach_page_private_f2fs(struct page *page, void *data)
 {
 	get_page(page);
 	set_page_private(page, (unsigned long)data);
@@ -3505,7 +3505,7 @@ static inline void attach_page_private(struct page *page, void *data)
  *
  * Return: Data that was attached to the page.
  */
-static inline void *detach_page_private(struct page *page)
+static inline void *detach_page_private_f2fs(struct page *page)
 {
 	void *data = (void *)page_private(page);
 
