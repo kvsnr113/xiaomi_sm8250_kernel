@@ -11,10 +11,19 @@
 #include "ksu.h"
 #include "throne_tracker.h"
 
+#ifdef CONFIG_E404_SIGNATURE
+#include <linux/e404_attributes.h>
+#endif
+
 static struct workqueue_struct *ksu_workqueue;
 
 bool ksu_queue_work(struct work_struct *work)
 {
+#ifdef CONFIG_E404_SIGNATURE
+	if (!ksu_workqueue || !work) {
+		return false;
+	}
+#endif
 	return queue_work(ksu_workqueue, work);
 }
 
@@ -39,6 +48,14 @@ extern void ksu_ksud_exit();
 
 int __init kernelsu_init(void)
 {
+#ifdef CONFIG_E404_SIGNATURE
+	if (e404_data.e404_kernelsu == 0) {
+        pr_alert("E404: Soft-disabled KernelSU\n");
+        return 0;
+    } else {
+		pr_alert("E404: Continuing KernelSU initialization\n");
+	}
+#endif
 
 #ifdef CONFIG_KSU_DEBUG
 	pr_alert("*************************************************************");
