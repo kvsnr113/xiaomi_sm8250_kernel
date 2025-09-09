@@ -717,7 +717,7 @@ static int handle_step_chg_config(struct step_chg_info *chip)
 			vote(chip->fcc_votable, STEP_BMS_CHG_VOTER, false, pval.intval);
 		fcc_ua = pval.intval;
 
-		pr_info("bms step charge fcc:%d fv:%d\n", fcc_ua, fv_uv);
+		pr_debug("bms step charge fcc:%d fv:%d\n", fcc_ua, fv_uv);
 	}
 
 update_time:
@@ -884,7 +884,7 @@ static int handle_jeita(struct step_chg_info *chip)
 	if(chip->jeita_hot_th >= 0 && chip->jeita_cold_th >= (-100)) {
 		if (temp >= chip->jeita_hot_th ||
 				temp <= chip->jeita_cold_th) {
-			pr_info("sw-jeita: temp is :%d, stop charing\n", temp);
+			pr_debug("sw-jeita: temp is :%d, stop charing\n", temp);
 			vote(chip->chg_disable_votable, JEITA_VOTER, true, 0);
 		} else {
 			vote(chip->chg_disable_votable, JEITA_VOTER, false, 0);

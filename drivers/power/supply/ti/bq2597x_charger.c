@@ -11,7 +11,7 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  */
 
-#define pr_fmt(fmt) "[bq2597x] %s: " fmt, __func__
+#define pr_fmt(fmt)
 
 #include <linux/gpio.h>
 #include <linux/i2c.h>

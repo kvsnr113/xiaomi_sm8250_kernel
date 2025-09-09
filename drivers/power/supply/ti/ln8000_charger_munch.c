@@ -58,14 +58,7 @@ static const char *ln8000_dev_name[] = {
 	} while (0);
 
 #define ln_info(fmt, ...)                       \
-	do {                                            \
-		if (info->dev_role == LN_ROLE_STANDALONE)   \
-			printk(KERN_INFO "ln8000-standalone: %s: " fmt, __func__, ##__VA_ARGS__);  \
-		else if (info->dev_role == LN_ROLE_MASTER)                              \
-			printk(KERN_INFO "ln8000-master: %s: " fmt, __func__, ##__VA_ARGS__);  \
-		else                                                                    \
-			printk(KERN_INFO "ln8000-slave: %s: " fmt, __func__, ##__VA_ARGS__);  \
-	} while (0);
+	do {} while (0);
 
 #define ln_dbg(fmt, ...)                        \
 	do {                                            \

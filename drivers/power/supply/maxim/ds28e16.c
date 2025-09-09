@@ -32,7 +32,7 @@
 #include <linux/random.h>
 #include <linux/sched.h>
 
-#define ds_info pr_info
+#define ds_info pr_debug
 #define ds_dbg pr_debug
 #define ds_err pr_err
 #define ds_log pr_debug
@@ -101,10 +101,10 @@ static void set_sched_affinity_to_current(void)
 	ret = sched_setaffinity(CURRENT_DS28E16_TASK, cpumask_of(current_cpu));
 	preempt_enable();
 	if (ret) {
-		pr_info("Setting cpu affinity to current cpu failed(%ld) in %s.\n",
+		pr_debug("Setting cpu affinity to current cpu failed(%ld) in %s.\n",
 			ret, __func__);
 	} else {
-		pr_info("Setting cpu affinity to current cpu(%d) in %s.\n",
+		pr_debug("Setting cpu affinity to current cpu(%d) in %s.\n",
 			current_cpu, __func__);
 	}
 }
@@ -117,10 +117,10 @@ static void set_sched_affinity_to_all(void)
 	cpumask_setall(&dstp);
 	ret = sched_setaffinity(CURRENT_DS28E16_TASK, &dstp);
 	if (ret) {
-		pr_info("Setting cpu affinity to all valid cpus failed(%ld) in %s.\n",
+		pr_debug("Setting cpu affinity to all valid cpus failed(%ld) in %s.\n",
 			ret, __func__);
 	} else {
-		pr_info("Setting cpu affinity to all valid cpus in %s.\n",
+		pr_debug("Setting cpu affinity to all valid cpus in %s.\n",
 			__func__);
 	}
 }
@@ -189,7 +189,7 @@ static int ds28el16_Read_RomID_retry(unsigned char *RomID)
 
 	set_sched_affinity_to_current();
 	for (i = 0; i < GET_ROM_ID_RETRY; i++) {
-		ds_info("read rom id communication start %d...\n", i);
+		ds_dbg("read rom id communication start %d...\n", i);
 
 		if (Read_RomID(RomID) == DS_TRUE) {
 			set_sched_affinity_to_all();
@@ -206,7 +206,7 @@ static int ds28el16_get_page_status_retry(unsigned char *data)
 
 	set_sched_affinity_to_current();
 	for (i = 0; i < GET_BLOCK_STATUS_RETRY; i++) {
-		ds_info("read page status communication start... %d\n", i);
+		ds_dbg("read page status communication start... %d\n", i);
 
 		if (DS28E16_cmd_readStatus(data) == DS_TRUE) {
 			set_sched_affinity_to_all();
@@ -1171,7 +1171,7 @@ static int verify_set_property(struct power_supply *psy,
 		}
 		break;
 	default:
-		ds_err("unsupported property %d\n", prop);
+		ds_dbg("unsupported property %d\n", prop);
 		return -ENODATA;
 	}
 
@@ -1676,7 +1676,7 @@ static void battery_verify(struct work_struct *work)
 
 	if (result == DS_TRUE) {
 		data->batt_verified = 1;
-		ds_info("%s batt_verified = 1 \n", __func__);
+		ds_dbg("%s batt_verified = 1 \n", __func__);
 	} else {
 		data->batt_verified = 0;
 		if (count < VERIFY_MAX_COUNT) {
