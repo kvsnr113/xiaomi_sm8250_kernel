@@ -252,7 +252,7 @@ static struct drm_msm_pcc pcc_cfg_clear;
 void sde_dspp_clear_pcc(struct sde_hw_cp_cfg *hw_cfg)
 {
 	if (!hw_cfg->payload) {
-		DRM_INFO("hw_cfg->payload in NULL\n");
+		DRM_DEBUG_DRIVER("hw_cfg->payload in NULL\n");
 		return;
 	}
 
@@ -278,7 +278,7 @@ static int set_dspp_pcc_feature(struct sde_hw_dspp *hw_dspp,
 {
 	int ret = 0;
 	struct drm_msm_pcc *pcc_cfg;
-	DRM_INFO("layer_flag %d %d\n", hw_crtc->mi_dimlayer_type, hw_cfg->mi_dimlayer_type);
+	DRM_DEBUG_DRIVER("layer_flag %d %d\n", hw_crtc->mi_dimlayer_type, hw_cfg->mi_dimlayer_type);
 
 	if (!hw_dspp || !hw_dspp->ops.setup_pcc)
 		ret = -EINVAL;
@@ -1990,7 +1990,7 @@ int sde_cp_crtc_set_property(struct drm_crtc *crtc,
 
 	if (!pcc_info.initialized) {
 		pcc_info.crtc_id = crtc->base.id;
-		DRM_INFO("save primary crtc_id = %d\n", crtc->base.id);
+		DRM_DEBUG_DRIVER("save primary crtc_id = %d\n", crtc->base.id);
 		pcc_info.initialized = true;
 	}
 
@@ -2015,7 +2015,7 @@ int sde_cp_crtc_set_property(struct drm_crtc *crtc,
 		&& pcc_info.crtc_id == crtc->base.id) {
 		if ((val & MI_DIMLAYER_FOD_HBM_OVERLAY) != (pcc_info.fod_val & MI_DIMLAYER_FOD_HBM_OVERLAY)) {
 			fod_changed = true;
-			DRM_INFO("mi_fod_sync_info changed, prop_id = %d, hbm_overlay = %d\n",
+			DRM_DEBUG_DRIVER("mi_fod_sync_info changed, prop_id = %d, hbm_overlay = %d\n",
 					property->base.id, val & MI_DIMLAYER_FOD_HBM_OVERLAY);
 		}
 		pcc_info.fod_val = val;
@@ -2057,7 +2057,7 @@ int sde_cp_crtc_set_property(struct drm_crtc *crtc,
 	 * dspp/lm feature.
 	 */
 	if (sde_crtc->num_mixers > ARRAY_SIZE(sde_crtc->mixers)) {
-		DRM_INFO("Invalid mixer config act cnt %d max cnt %ld\n",
+		DRM_DEBUG_DRIVER("Invalid mixer config act cnt %d max cnt %ld\n",
 			sde_crtc->num_mixers,
 				(long)ARRAY_SIZE(sde_crtc->mixers));
 		ret = -EPERM;
@@ -2098,7 +2098,7 @@ int sde_cp_crtc_set_property(struct drm_crtc *crtc,
 		ret = sde_cp_disable_crtc_property(crtc, property, prop_node);
 	} else {
 		if (fod_changed) {
-			DRM_INFO("pcc_property enable\n");
+			DRM_DEBUG_DRIVER("pcc_property enable\n");
 			ret = sde_cp_enable_crtc_property(crtc, &pcc_info.pcc_property,
 							  prop_node, pcc_info.pcc_val);
 
@@ -2512,7 +2512,7 @@ static void dspp_ltm_install_property(struct drm_crtc *crtc)
 	ltm_sw_fuse = sde_hw_get_ltm_sw_fuse_value(kms->hw_sw_fuse);
 	DRM_DEBUG_DRIVER("ltm_sw_fuse value: 0x%x\n", ltm_sw_fuse);
 	if (ltm_sw_fuse != SW_FUSE_ENABLE) {
-		pr_info("ltm_sw_fuse is not enabled: 0x%x\n", ltm_sw_fuse);
+		pr_debug("ltm_sw_fuse is not enabled: 0x%x\n", ltm_sw_fuse);
 	}
 
 	catalog = kms->catalog;
