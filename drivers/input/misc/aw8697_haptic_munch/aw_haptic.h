@@ -16,7 +16,7 @@
 			pr_err("[haptic_hv]" format, ##__VA_ARGS__)
 
 #define aw_info(format, ...) \
-			pr_info("[haptic_hv]" format, ##__VA_ARGS__)
+			pr_debug("[haptic_hv]" format, ##__VA_ARGS__)
 
 #define aw_dbg(format, ...) \
 			pr_debug("[haptic_hv]" format, ##__VA_ARGS__)

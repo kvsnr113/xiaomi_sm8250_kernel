@@ -175,10 +175,7 @@ struct ts_ic_info {
 #define FTS_FUNC_EXIT()
 #endif
 
-#define FTS_INFO(fmt, args...) do { \
-	pr_info(KERN_INFO "[FTS_TS/I]%s:"fmt"\n", __func__, ##args); \
-} while (0)
-
+#define FTS_INFO(fmt, args...)
 #define FTS_ERROR(fmt, args...) do { \
 	pr_info(KERN_ERR "[FTS_TS/E]%s:"fmt"\n", __func__, ##args); \
 } while (0)
