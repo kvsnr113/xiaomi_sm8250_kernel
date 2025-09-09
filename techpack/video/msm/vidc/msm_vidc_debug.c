@@ -546,9 +546,6 @@ void msm_vidc_debugfs_update(struct msm_vidc_inst *inst,
 	switch (e) {
 	case MSM_VIDC_DEBUGFS_EVENT_ETB:
 		inst->count.etb++;
-		trace_msm_v4l2_vidc_buffer_counter("ETB",
-				inst->count.etb, inst->count.ebd,
-				inst->count.ftb, inst->count.fbd);
 		if (inst->count.ebd && inst->count.ftb > inst->count.fbd) {
 			d->pdata[FRAME_PROCESSING].name[0] = '\0';
 			tic(inst, FRAME_PROCESSING, a);
@@ -556,9 +553,6 @@ void msm_vidc_debugfs_update(struct msm_vidc_inst *inst,
 	break;
 	case MSM_VIDC_DEBUGFS_EVENT_EBD:
 		inst->count.ebd++;
-		trace_msm_v4l2_vidc_buffer_counter("EBD",
-				inst->count.etb, inst->count.ebd,
-				inst->count.ftb, inst->count.fbd);
 		if (inst->count.ebd && inst->count.ebd == inst->count.etb) {
 			toc(inst, FRAME_PROCESSING);
 			s_vpr_p(inst->sid, "EBD: FW needs input buffers\n");
@@ -568,9 +562,6 @@ void msm_vidc_debugfs_update(struct msm_vidc_inst *inst,
 	break;
 	case MSM_VIDC_DEBUGFS_EVENT_FTB: {
 		inst->count.ftb++;
-		trace_msm_v4l2_vidc_buffer_counter("FTB",
-				inst->count.etb, inst->count.ebd,
-				inst->count.ftb, inst->count.fbd);
 		if (inst->count.ebd && inst->count.etb > inst->count.ebd) {
 			d->pdata[FRAME_PROCESSING].name[0] = '\0';
 			tic(inst, FRAME_PROCESSING, a);
@@ -580,9 +571,6 @@ void msm_vidc_debugfs_update(struct msm_vidc_inst *inst,
 	case MSM_VIDC_DEBUGFS_EVENT_FBD:
 		inst->count.fbd++;
 		inst->debug.samples++;
-		trace_msm_v4l2_vidc_buffer_counter("FBD",
-				inst->count.etb, inst->count.ebd,
-				inst->count.ftb, inst->count.fbd);
 		if (inst->count.fbd &&
 			inst->count.fbd == inst->count.ftb) {
 			toc(inst, FRAME_PROCESSING);
