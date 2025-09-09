@@ -257,7 +257,7 @@ static unsigned int _hwcg_show(struct adreno_device *adreno_dev)
 static int _throttling_store(struct adreno_device *adreno_dev,
 	unsigned int val)
 {
-	return _pwrctrl_store(adreno_dev, val, ADRENO_THROTTLING_CTRL);
+	return _pwrctrl_store(adreno_dev, 0, ADRENO_THROTTLING_CTRL);
 }
 
 static unsigned int _throttling_show(struct adreno_device *adreno_dev)
