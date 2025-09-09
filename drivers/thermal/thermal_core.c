@@ -1699,12 +1699,12 @@ static int of_parse_thermal_message(void)
 	if (of_property_read_string(np, "board-sensor", &board_sensor))
 		return -EINVAL;
 
-	pr_info("%s board sensor: %s\n", __func__, board_sensor);
+	pr_debug("%s board sensor: %s\n", __func__, board_sensor);
 
 	if (of_property_read_string(np, "ambient-sensor", &ambient_sensor))
 		return -EINVAL;
 
-	pr_info("%s ambient sensor: %s\n", __func__, ambient_sensor);
+	pr_debug("%s ambient sensor: %s\n", __func__, ambient_sensor);
 
 	return 0;
 }
@@ -2091,7 +2091,7 @@ static int screen_state_for_thermal_callback(struct notifier_block *nb,
 		break;
 	}
 
-	pr_warn("%s: %s, sm.screen_state = %d\n", __func__, get_screen_state_name(blank),
+	pr_debug("%s: %s, sm.screen_state = %d\n", __func__, get_screen_state_name(blank),
 			sm.screen_state);
 	sysfs_notify(&thermal_message_dev.kobj, NULL, "screen_state");
 

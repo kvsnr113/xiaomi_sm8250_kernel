@@ -132,7 +132,7 @@ int us_afe_callback(int data)
 
 	get_monotonic_boottime(&ts);
 	el_data.timestamp = timespec_to_ns(&ts);
-	pr_info("%s: data = %d\n", __func__, data);
+	pr_debug("%s: data = %d\n", __func__, data);
 
 	if (!data)
 		el_data.data1 = 0;
@@ -256,7 +256,7 @@ static int us_prox_probe(struct platform_device *pdev)
 	int ret = 0;
 	struct us_prox_data *us_prox;
 
-	pr_info("%s: start\n", __func__);
+	pr_debug("%s: start\n", __func__);
 
 	us_prox = kzalloc(sizeof(*us_prox), GFP_KERNEL);
 	if (!us_prox)
@@ -274,7 +274,7 @@ static int us_prox_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	pr_info("%s: end\n", __func__);
+	pr_debug("%s: end\n", __func__);
 	return ret;
 }
 
