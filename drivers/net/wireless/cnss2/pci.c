@@ -1083,34 +1083,6 @@ void cnss_pci_unlock_reg_window(struct device *dev, unsigned long *flags)
 }
 EXPORT_SYMBOL(cnss_pci_unlock_reg_window);
 
-static char *cnss_mhi_state_to_str(enum cnss_mhi_state mhi_state)
-{
-	switch (mhi_state) {
-	case CNSS_MHI_INIT:
-		return "INIT";
-	case CNSS_MHI_DEINIT:
-		return "DEINIT";
-	case CNSS_MHI_POWER_ON:
-		return "POWER_ON";
-	case CNSS_MHI_POWERING_OFF:
-		return "POWERING_OFF";
-	case CNSS_MHI_POWER_OFF:
-		return "POWER_OFF";
-	case CNSS_MHI_FORCE_POWER_OFF:
-		return "FORCE_POWER_OFF";
-	case CNSS_MHI_SUSPEND:
-		return "SUSPEND";
-	case CNSS_MHI_RESUME:
-		return "RESUME";
-	case CNSS_MHI_TRIGGER_RDDM:
-		return "TRIGGER_RDDM";
-	case CNSS_MHI_RDDM_DONE:
-		return "RDDM_DONE";
-	default:
-		return "UNKNOWN";
-	}
-};
-
 static int cnss_pci_check_mhi_state_bit(struct cnss_pci_data *pci_priv,
 					enum cnss_mhi_state mhi_state)
 {
@@ -2109,7 +2081,7 @@ static int cnss_qca6290_powerup(struct cnss_pci_data *pci_priv)
 	int ret = 0;
 	struct cnss_plat_data *plat_priv = pci_priv->plat_priv;
 	unsigned int timeout;
-	int retry = 0, sw_ctrl_gpio = plat_priv->pinctrl_info.sw_ctrl_gpio;
+	int retry = 0;
 
 	if (plat_priv->ramdump_info_v2.dump_data_valid) {
 		cnss_pci_clear_dump_info(pci_priv);
@@ -2256,7 +2228,7 @@ out:
 
 static void cnss_qca6290_crash_shutdown(struct cnss_pci_data *pci_priv)
 {
-	struct cnss_plat_data *plat_priv = pci_priv->plat_priv;
+	struct cnss_plat_data;
 
 	cnss_pr_dbg("Crash shutdown with driver_state 0x%lx\n",
 		    plat_priv->driver_state);
@@ -4654,26 +4626,6 @@ static int cnss_pci_update_fw_name(struct cnss_pci_data *pci_priv)
 
 	return 0;
 }
-
-static char *cnss_mhi_notify_status_to_str(enum MHI_CB status)
-{
-	switch (status) {
-	case MHI_CB_IDLE:
-		return "IDLE";
-	case MHI_CB_EE_RDDM:
-		return "RDDM";
-	case MHI_CB_SYS_ERROR:
-		return "SYS_ERROR";
-	case MHI_CB_FATAL_ERROR:
-		return "FATAL_ERROR";
-	case MHI_CB_EE_MISSION_MODE:
-		return "MISSION_MODE";
-	case MHI_CB_FW_FALLBACK_IMG:
-		return "FW_FALLBACK";
-	default:
-		return "UNKNOWN";
-	}
-};
 
 static void cnss_dev_rddm_timeout_hdlr(struct timer_list *t)
 {
