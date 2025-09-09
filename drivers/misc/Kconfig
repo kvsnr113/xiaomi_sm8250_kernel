@@ -4,6 +4,41 @@
 
 menu "Misc devices"
 
+config E404_SIGNATURE
+ 	tristate "Signature E404 kernel build"
+ 	default y
+ 	help
+ 	  Enabling this require needed files of e404_attributes.c and e404_attributes.h
+	  Allow to build kernel with E404 attributes and sysfs features.
+
+config E404_KSU_DEFAULT
+	bool "E404 KSU default"
+	depends on E404_SIGNATURE
+	default y
+	help
+	  Enabling this will utilize KernelSU to load upon boot.
+
+config E404_EFFCPU_DEFAULT
+	bool "E404 EFFCPU default"
+	depends on E404_SIGNATURE
+	default n
+	help
+	  Enabling this will utilize EFFCPU frequency table upon boot.
+
+config E404_IR_LOS_DEFAULT
+	bool "E404 IR LOS default"
+	depends on E404_SIGNATURE
+	default n
+	help
+	  Enabling this will utilize Lineage-based infrared blaster upon boot.
+
+config E404_ALIOTH_5K_BATT_DEFAULT
+	bool "E404 ALIOTH 5K BATT default"
+	depends on E404_SIGNATURE
+	default n
+	help
+	  Enabling this will utilize 5000mAh battery profile for alioth upon boot.
+
 config SPI_XIAOMI_TP
         bool
         depends on SPI
