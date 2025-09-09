@@ -79,30 +79,6 @@ void cnss_ignore_qmi_failure(bool ignore)
 void cnss_ignore_qmi_failure(bool ignore) { }
 #endif
 
-static char *cnss_qmi_mode_to_str(enum cnss_driver_mode mode)
-{
-	switch (mode) {
-	case CNSS_MISSION:
-		return "MISSION";
-	case CNSS_FTM:
-		return "FTM";
-	case CNSS_EPPING:
-		return "EPPING";
-	case CNSS_WALTEST:
-		return "WALTEST";
-	case CNSS_OFF:
-		return "OFF";
-	case CNSS_CCPM:
-		return "CCPM";
-	case CNSS_QVIT:
-		return "QVIT";
-	case CNSS_CALIBRATION:
-		return "CALIBRATION";
-	default:
-		return "UNKNOWN";
-	}
-};
-
 static int cnss_wlfw_ind_register_send_sync(struct cnss_plat_data *plat_priv)
 {
 	struct wlfw_ind_register_req_msg_v01 *req;
