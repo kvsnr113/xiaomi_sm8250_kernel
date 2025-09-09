@@ -13,6 +13,10 @@
 #include "kgsl_pool.h"
 #include "kgsl_sharedmem.h"
 
+#ifdef CONFIG_E404_SIGNATURE
+#include <linux/e404_attributes.h>
+#endif
+
 #define KGSL_MAX_POOLS 4
 #define KGSL_MAX_POOL_ORDER 8
 #define KGSL_MAX_RESERVED_PAGES 4096
@@ -336,7 +340,13 @@ int kgsl_pool_alloc_page(int *page_size, struct page **pages,
 	}
 
 done:
+	#ifdef CONFIG_E404_SIGNATURE
+	if (e404_data.e404_kgsl_skip_zeroing == 0)
+		kgsl_zero_page(page, order, dev);
+	#else
 	kgsl_zero_page(page, order, dev);
+	#endif
+	
 	for (j = 0; j < (*page_size >> PAGE_SHIFT); j++) {
 		p = nth_page(page, j);
 		pages[pcount] = p;
