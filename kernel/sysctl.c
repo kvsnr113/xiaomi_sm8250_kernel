@@ -2022,7 +2022,7 @@ static struct ctl_table vm_table[] = {
 		.procname	= "stat_interval",
 		.data		= &sysctl_stat_interval,
 		.maxlen		= sizeof(sysctl_stat_interval),
-		.mode		= 0644,
+		.mode		= 0444,
 		.proc_handler	= proc_dointvec_jiffies,
 	},
 	{
