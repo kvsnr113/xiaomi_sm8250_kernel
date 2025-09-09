@@ -25,6 +25,12 @@ menuconfig NET
 
 if NET
 
+config DISABLE_TCP_METRICS
+	bool
+	help
+		Disables TCP_METRICS_UPDATE
+	default y
+
 config WANT_COMPAT_NETLINK_MESSAGES
 	bool
 	help

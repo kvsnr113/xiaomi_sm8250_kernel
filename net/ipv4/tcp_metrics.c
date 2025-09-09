@@ -319,6 +319,7 @@ static struct tcp_metrics_block *tcp_get_metrics(struct sock *sk,
  */
 void tcp_update_metrics(struct sock *sk)
 {
+#ifndef CONFIG_DISABLE_TCP_METRICS	
 	const struct inet_connection_sock *icsk = inet_csk(sk);
 	struct dst_entry *dst = __sk_dst_get(sk);
 	struct tcp_sock *tp = tcp_sk(sk);
@@ -327,8 +328,9 @@ void tcp_update_metrics(struct sock *sk)
 	unsigned long rtt;
 	u32 val;
 	int m;
-
+#endif
 	sk_dst_confirm(sk);
+#ifndef CONFIG_DISABLE_TCP_METRICS	
 	if (net->ipv4.sysctl_tcp_nometrics_save || !dst)
 		return;
 
@@ -433,6 +435,9 @@ void tcp_update_metrics(struct sock *sk)
 	tm->tcpm_stamp = jiffies;
 out_unlock:
 	rcu_read_unlock();
+#else
+	return;
+#endif
 }
 
 /* Initialize metrics on socket. */
