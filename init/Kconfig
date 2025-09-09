@@ -1555,7 +1555,6 @@ menuconfig EXPERT
 config UID16
 	bool "Enable 16-bit UID system calls" if EXPERT
 	depends on HAVE_UID16 && MULTIUSER
-	default y
 	help
 	  This enables the legacy 16-bit UID syscall wrappers.
 
@@ -1885,7 +1884,6 @@ config ARCH_HAS_MEMBARRIER_SYNC_CORE
 
 config RSEQ
 	bool "Enable rseq() system call" if EXPERT
-	default y
 	depends on HAVE_RSEQ
 	select MEMBARRIER
 	help
