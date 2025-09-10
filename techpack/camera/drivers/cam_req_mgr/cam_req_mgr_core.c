@@ -4223,7 +4223,6 @@ int cam_req_mgr_core_device_init(void)
 	CAM_DBG(CAM_CRM, "g_crm_core_dev %pK", g_crm_core_dev);
 	INIT_LIST_HEAD(&g_crm_core_dev->session_head);
 	mutex_init(&g_crm_core_dev->crm_lock);
-	cam_req_mgr_debug_register(g_crm_core_dev);
 
 	for (i = 0; i < MAXIMUM_LINKS_PER_SESSION; i++) {
 		mutex_init(&g_links[i].lock);
