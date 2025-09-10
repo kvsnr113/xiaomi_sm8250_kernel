@@ -30,7 +30,11 @@
 #include <linux/regulator/driver.h>
 #include <linux/regulator/consumer.h>
 #include <linux/of_irq.h>
+
+#ifdef CONFIG_BOOT_INFO
 #include <asm/bootinfo.h>
+#endif
+
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
 
