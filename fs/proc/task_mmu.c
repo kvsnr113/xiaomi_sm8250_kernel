@@ -23,7 +23,11 @@
 #include <asm/elf.h>
 #include <asm/tlb.h>
 #include <asm/tlbflush.h>
-#include <misc/lyb_taskmmu.h>
+
+#ifdef CONFIG_E404_SIGNATURE
+#include <linux/e404_attributes.h>
+#endif
+
 #include "internal.h"
 
 #define SEQ_PUT_DEC(str, val) \
@@ -575,7 +579,7 @@ static int show_vma_header_prefix(struct seq_file *m, unsigned long start,
 	/* Supports printing up to 40 bits per virtual address */
 	BUILD_BUG_ON(CONFIG_ARM64_VA_BITS > 40);
 
-	if (lyb_sultan_pid_shrink)
+	if (e404_data.pid_shrink == 1)
 	{
 		/* 
 		 * shrinks the PID map output to be as small as
@@ -806,7 +810,7 @@ static const struct seq_operations proc_pid_maps_op_sultanpid = {
 
 static int pid_maps_open(struct inode *inode, struct file *file)
 {
-	if (lyb_sultan_pid)
+	if (e404_data.pid_shrink == 1)
 		return do_maps_open(inode, file, &proc_pid_maps_op_sultanpid);
 	else return do_maps_open(inode, file, &proc_pid_maps_op);
 }
