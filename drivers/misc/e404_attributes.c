@@ -10,6 +10,7 @@ struct e404_attributes e404_data = {
     .batt_profile = 1,
     .dvq_input_boost = 1,
     .kgsl_skip_zeroing = 0,
+    .pid_shrink = 0,
     .panel_width = 70,
     .panel_height = 155,
     .oem_panel_width = 700,
@@ -138,6 +139,7 @@ E404_ATTR_RO(oem_panel_height);
 
 E404_ATTR_RW(dvq_input_boost);
 E404_ATTR_RW(kgsl_skip_zeroing);
+E404_ATTR_RW(pid_shrink);
 
 static struct attribute *e404_attrs[] = {
     &kernelsu_attr.attr,
@@ -147,6 +149,7 @@ static struct attribute *e404_attrs[] = {
     &batt_profile_attr.attr,
     &dvq_input_boost_attr.attr,
     &kgsl_skip_zeroing_attr.attr,
+    &pid_shrink_attr.attr,
     &panel_width_attr.attr,
     &panel_height_attr.attr,
     &oem_panel_width_attr.attr,
