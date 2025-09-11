@@ -49,7 +49,7 @@ extern void ksu_ksud_exit();
 int __init kernelsu_init(void)
 {
 #ifdef CONFIG_E404_SIGNATURE
-	if (e404_data.e404_kernelsu == 0) {
+	if (e404_data.kernelsu == 0) {
         pr_alert("E404: Soft-disabled KernelSU\n");
         return 0;
     } else {

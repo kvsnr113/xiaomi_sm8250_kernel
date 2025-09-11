@@ -3,51 +3,51 @@
 #include <linux/e404_attributes.h>
 
 struct e404_attributes e404_data = {
-    .e404_kernelsu = 0,
-    .e404_effcpu = 0,
-    .e404_rom_type = 1,
-    .e404_dtbo_type = 1,
-    .e404_batt_profile = 1,
-    .e404_dvq_input_boost = 1,
-    .e404_kgsl_skip_zeroing = 0,
-    .e404_panel_width = 70,
-    .e404_panel_height = 155,
-    .e404_oem_panel_width = 700,
-    .e404_oem_panel_height = 1550
+    .kernelsu = 0,
+    .effcpu = 0,
+    .rom_type = 1,
+    .dtbo_type = 1,
+    .batt_profile = 1,
+    .dvq_input_boost = 1,
+    .kgsl_skip_zeroing = 0,
+    .panel_width = 70,
+    .panel_height = 155,
+    .oem_panel_width = 700,
+    .oem_panel_height = 1550
 };
 
 static struct kobject *e404_kobj;
 
 #ifdef CONFIG_E404_KSU_DEFAULT
-int e404_early_kernelsu = 1;
+int early_kernelsu = 1;
 #else
-int e404_early_kernelsu = 0;
+int early_kernelsu = 0;
 #endif
 
 #ifdef CONFIG_E404_EFFCPU_DEFAULT
-int e404_early_effcpu = 1;
+int early_effcpu = 1;
 #else
-int e404_early_effcpu = 0;
+int early_effcpu = 0;
 #endif
 
 #ifdef CONFIG_E404_OPLUS
-int e404_early_rom_type = 3;
+int early_rom_type = 3;
 #elif defined(CONFIG_E404_MIUI)
-int e404_early_rom_type = 2;
+int early_rom_type = 2;
 #else
-int e404_early_rom_type = 1;
+int early_rom_type = 1;
 #endif
 
 #ifdef CONFIG_E404_MIUI
-int e404_early_dtbo_type = 2;
+int early_dtbo_type = 2;
 #else
-int e404_early_dtbo_type = 1;
+int early_dtbo_type = 1;
 #endif
 
 #ifdef CONFIG_E404_ALIOTH_5K_BATT_DEFAULT
-int e404_early_batt_profile = 2;
+int early_batt_profile = 2;
 #else
-int e404_early_batt_profile = 1;
+int early_batt_profile = 1;
 #endif
 
 static int __init parse_e404_args(char *str)
@@ -60,27 +60,27 @@ static int __init parse_e404_args(char *str)
         pr_alert("E404: Parsing flag: %s\n", arg);
 
         if (strcmp(arg, "root_ksu") == 0)
-            e404_early_kernelsu = 1;
+            early_kernelsu = 1;
         else if (strcmp(arg, "root_noksu") == 0)
-            e404_early_kernelsu = 0;
+            early_kernelsu = 0;
         else if (strcmp(arg, "dtb_effcpu") == 0)
-            e404_early_effcpu = 1;
+            early_effcpu = 1;
         else if (strcmp(arg, "dtb_def") == 0)
-            e404_early_effcpu = 0;
+            early_effcpu = 0;
         else if (strcmp(arg, "port") == 0)
-            e404_early_rom_type = 3;
+            early_rom_type = 3;
         else if (strcmp(arg, "miui") == 0)
-            e404_early_rom_type = 2;
+            early_rom_type = 2;
         else if (strcmp(arg, "aosp") == 0)
-            e404_early_rom_type = 1;
+            early_rom_type = 1;
         else if (strcmp(arg, "dtbo_def") == 0)
-            e404_early_dtbo_type = 1;
+            early_dtbo_type = 1;
         else if (strcmp(arg, "dtbo_oem") == 0)
-            e404_early_dtbo_type = 2;
+            early_dtbo_type = 2;
         else if (strcmp(arg, "batt_def") == 0)
-            e404_early_batt_profile = 1;
+            early_batt_profile = 1;
         else if (strcmp(arg, "batt_5k") == 0)
-            e404_early_batt_profile = 2;
+            early_batt_profile = 2;
         else
             pr_alert("E404: Unknown flag: %s\n", arg);
     }
@@ -90,18 +90,18 @@ static int __init parse_e404_args(char *str)
 early_param("e404_args", parse_e404_args);
 
 static void e404_parse_attributes(void) {
-    e404_data.e404_kernelsu = e404_early_kernelsu;
-    e404_data.e404_effcpu = e404_early_effcpu;
-    e404_data.e404_rom_type = e404_early_rom_type;
-    e404_data.e404_dtbo_type = e404_early_dtbo_type;
-    e404_data.e404_batt_profile = e404_early_batt_profile;
+    e404_data.kernelsu = early_kernelsu;
+    e404_data.effcpu = early_effcpu;
+    e404_data.rom_type = early_rom_type;
+    e404_data.dtbo_type = early_dtbo_type;
+    e404_data.batt_profile = early_batt_profile;
 
     pr_alert("E404 Early Attributes: KernelSU=%d, EFFCPU=%d, RomType=%d, DTBOType=%d, BatteryProfile=%d\n",
-        e404_data.e404_kernelsu,
-        e404_data.e404_effcpu,
-        e404_data.e404_rom_type,
-        e404_data.e404_dtbo_type,
-        e404_data.e404_batt_profile);
+        e404_data.kernelsu,
+        e404_data.effcpu,
+        e404_data.rom_type,
+        e404_data.dtbo_type,
+        e404_data.batt_profile);
 }
 
 #define E404_ATTR_RO(name) \
@@ -126,31 +126,31 @@ static ssize_t name##_store(struct kobject *kobj, struct kobj_attribute *attr, c
 } \
 static struct kobj_attribute name##_attr = __ATTR(name, 0664, name##_show, name##_store);
 
-E404_ATTR_RO(e404_kernelsu);
-E404_ATTR_RO(e404_effcpu);
-E404_ATTR_RO(e404_rom_type);
-E404_ATTR_RO(e404_dtbo_type);
-E404_ATTR_RO(e404_batt_profile);
-E404_ATTR_RO(e404_panel_width);
-E404_ATTR_RO(e404_panel_height);
-E404_ATTR_RO(e404_oem_panel_width);
-E404_ATTR_RO(e404_oem_panel_height);
+E404_ATTR_RO(kernelsu);
+E404_ATTR_RO(effcpu);
+E404_ATTR_RO(rom_type);
+E404_ATTR_RO(dtbo_type);
+E404_ATTR_RO(batt_profile);
+E404_ATTR_RO(panel_width);
+E404_ATTR_RO(panel_height);
+E404_ATTR_RO(oem_panel_width);
+E404_ATTR_RO(oem_panel_height);
 
-E404_ATTR_RW(e404_dvq_input_boost);
-E404_ATTR_RW(e404_kgsl_skip_zeroing);
+E404_ATTR_RW(dvq_input_boost);
+E404_ATTR_RW(kgsl_skip_zeroing);
 
 static struct attribute *e404_attrs[] = {
-    &e404_kernelsu_attr.attr,
-    &e404_effcpu_attr.attr,
-    &e404_rom_type_attr.attr,
-    &e404_dtbo_type_attr.attr,
-    &e404_batt_profile_attr.attr,
-    &e404_dvq_input_boost_attr.attr,
-    &e404_kgsl_skip_zeroing_attr.attr,
-    &e404_panel_width_attr.attr,
-    &e404_panel_height_attr.attr,
-    &e404_oem_panel_width_attr.attr,
-    &e404_oem_panel_height_attr.attr,
+    &kernelsu_attr.attr,
+    &effcpu_attr.attr,
+    &rom_type_attr.attr,
+    &dtbo_type_attr.attr,
+    &batt_profile_attr.attr,
+    &dvq_input_boost_attr.attr,
+    &kgsl_skip_zeroing_attr.attr,
+    &panel_width_attr.attr,
+    &panel_height_attr.attr,
+    &oem_panel_width_attr.attr,
+    &oem_panel_height_attr.attr,
     NULL,
 };
 
@@ -187,4 +187,4 @@ module_exit(e404_exit);
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("kvsnr113");
 MODULE_DESCRIPTION("E404 manager via early_param and sysfs");
-MODULE_VERSION("1.3");
+MODULE_VERSION("1.4");
