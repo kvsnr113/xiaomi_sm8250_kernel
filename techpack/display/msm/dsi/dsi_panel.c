@@ -2063,15 +2063,15 @@ static int dsi_panel_parse_phy_props(struct dsi_panel *panel)
 	const char *name = panel->name;
 
 #ifdef CONFIG_E404_SIGNATURE
-    if (e404_data.e404_dtbo_type == 1) {
-        props->panel_width_mm = e404_data.e404_panel_width;
+    if (e404_data.dtbo_type == 1) {
+        props->panel_width_mm = e404_data.panel_width;
 		pr_alert("E404: Overriding DTBO panel width for rom type 1");
-		props->panel_height_mm = e404_data.e404_panel_height;
+		props->panel_height_mm = e404_data.panel_height;
 		pr_alert("E404: Overriding DTBO panel height for rom type 1");
-    } else if (e404_data.e404_dtbo_type == 2) {
-		props->panel_width_mm = e404_data.e404_oem_panel_width;
+    } else if (e404_data.dtbo_type == 2) {
+		props->panel_width_mm = e404_data.oem_panel_width;
 		pr_alert("E404: Overriding DTBO panel width for rom type 2");
-		props->panel_height_mm = e404_data.e404_oem_panel_height;
+		props->panel_height_mm = e404_data.oem_panel_height;
 		pr_alert("E404: Overriding DTBO panel height for rom type 2");
 	} else {
         rc = utils->read_u32(utils->data, "qcom,mdss-pan-physical-width-dimension", &val);
