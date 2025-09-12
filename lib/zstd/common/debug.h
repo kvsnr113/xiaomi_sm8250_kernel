@@ -75,12 +75,13 @@
 #if (DEBUGLEVEL>=2)
 #  define ZSTD_DEPS_NEED_IO
 #  include "zstd_deps.h"
-extern int g_debuglevel; /* the variable is only declared,
-                            it actually lives in debug.c,
-                            and is shared by the whole process.
-                            It's not thread-safe.
-                            It's useful when enabling very verbose levels
-                            on selective conditions (such as position in src) */
+
+/* We only use this when DEBUGLEVEL>=2, but we get -Werror=pedantic errors if a
+ * translation unit is empty. So remove this from Linux kernel builds, but
+ * otherwise just leave it in.
+ */
+int g_debuglevel = DEBUGLEVEL;
+
 
 #  define RAWLOG(l, ...)                   \
     do {                                   \
