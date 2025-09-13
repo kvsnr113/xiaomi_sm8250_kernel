@@ -3206,13 +3206,12 @@ static int mipi_reg_procfs_open(struct inode *inode, struct file *file)
 	return single_open(file, mipi_reg_procfs_show, PDE_DATA(inode));
 }
 
-const struct file_operations mipi_reg_proc_fops = {
-	.owner   = THIS_MODULE,
-	.open    = mipi_reg_procfs_open,
-	.write   = mipi_reg_procfs_write,
-	.read    = seq_read,
-	.llseek  = seq_lseek,
-	.release = single_release,
+const struct proc_ops mipi_reg_proc_fops = {
+	.proc_open    = mipi_reg_procfs_open,
+	.proc_write   = mipi_reg_procfs_write,
+	.proc_read    = seq_read,
+	.proc_lseek   = seq_lseek,
+	.proc_release = single_release,
 };
 
 int dsi_panel_procfs_init(struct dsi_panel *panel)

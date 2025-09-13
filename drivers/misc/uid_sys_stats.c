@@ -246,9 +246,9 @@ static int uid_cputime_open(struct inode *inode, struct file *file)
 }
 
 static const struct proc_ops uid_cputime_fops = {
-	.proc_open	= uid_cputime_open,
-	.proc_read	= seq_read,
-	.proc_lseek	= seq_lseek,
+	.proc_open		= uid_cputime_open,
+	.proc_read		= seq_read,
+	.proc_lseek		= seq_lseek,
 	.proc_release	= single_release,
 };
 
