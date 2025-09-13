@@ -756,10 +756,6 @@ static void *m_start_pid(struct seq_file *m, loff_t *ppos)
 
 static void *m_next_pid(struct seq_file *m, void *v, loff_t *pos)
 {
-	struct proc_maps_private *priv = m->private;
-
-	/* Terminate since the stack mapping has been printed */
-	vma_stop(priv);
 	(*pos)++;
 	return NULL;
 }
