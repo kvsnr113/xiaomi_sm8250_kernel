@@ -243,7 +243,7 @@ static void m_stop(struct seq_file *m, void *v)
 		return;
 
 	release_task_mempolicy(priv);
-	mmap_read_unlock(mm);
+	up_read(&mm->mmap_sem);
 	mmput(mm);
 	put_task_struct(priv->task);
 	priv->task = NULL;
