@@ -19,6 +19,10 @@
 #define SWAP_NANDSWAP_PRIO	2020	/* just a magic number */
 #endif
 
+#ifdef CONFIG_E404_SIGNATURE
+#include <linux/e404_attributes.h>
+#endif
+
 struct notifier_block;
 
 struct bio;
@@ -455,10 +459,12 @@ extern struct swap_info_struct *nandswap_si;
 static inline bool vm_swap_full(void)
 {
 #ifdef CONFIG_OPLUS_NANDSWAP
-	if (nandswap_si)
+	if ((e404_data.rom_type == 3) && nandswap_si)
 		return (atomic_long_read(&nr_swap_pages) -
 			(nandswap_si->pages - nandswap_si->inuse_pages)) * 2
 			< (total_swap_pages - nandswap_si->pages);
+	else
+		return atomic_long_read(&nr_swap_pages) * 2 < total_swap_pages;
 #endif
 	return atomic_long_read(&nr_swap_pages) * 2 < total_swap_pages;
 }
@@ -466,9 +472,11 @@ static inline bool vm_swap_full(void)
 static inline long get_nr_swap_pages(void)
 {
 #ifdef CONFIG_OPLUS_NANDSWAP
-	if (nandswap_si)
+	if ((e404_data.rom_type == 3) && nandswap_si)
 		return atomic_long_read(&nr_swap_pages) -
 			(nandswap_si->pages - nandswap_si->inuse_pages);
+	else
+		return atomic_long_read(&nr_swap_pages);
 #endif
 	return atomic_long_read(&nr_swap_pages);
 }

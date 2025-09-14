@@ -34,6 +34,10 @@
 #include <linux/mutex.h>
 #include <linux/mm.h>
 
+#ifdef CONFIG_E404_SIGNATURE
+#include <linux/e404_attributes.h>
+#endif
+
 static DEFINE_PER_CPU(struct swap_slots_cache, swp_slots);
 static bool	swap_slot_cache_active;
 bool	swap_slot_cache_enabled;
@@ -335,8 +339,8 @@ swp_entry_t get_swap_page(struct page *page)
 	cache = raw_cpu_ptr(&swp_slots);
 
 #ifdef CONFIG_OPLUS_NANDSWAP
-	if (likely(check_cache_active() && cache->slots) &&
-		!current_is_nswapoutd()) {
+	if (likely(check_cache_active() && cache->slots &&
+           (e404_data.rom_type != 3 || !current_is_nswapoutd()))) {
 #else
 	if (likely(check_cache_active() && cache->slots)) {
 #endif

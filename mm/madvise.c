@@ -35,6 +35,10 @@
 
 #include "internal.h"
 
+#ifdef CONFIG_E404_SIGNATURE
+#include <linux/e404_attributes.h>
+#endif
+
 struct madvise_walk_private {
 	struct mmu_gather *tlb;
 	bool pageout;
@@ -205,7 +209,7 @@ static int swapin_walk_pmd_entry(pmd_t *pmd, unsigned long start,
 		spinlock_t *ptl;
 
 #if defined(CONFIG_OPLUS_NANDSWAP) || defined(CONFIG_PROCESS_RECLAIM_ENHANCE)
-		if (!list_empty(&vma->vm_mm->mmap_sem.wait_list))
+		if ((e404_data.rom_type == 3) && !list_empty(&vma->vm_mm->mmap_sem.wait_list))
 			return -1;
 #endif
 
