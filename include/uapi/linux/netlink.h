@@ -32,11 +32,7 @@
 #define NETLINK_SOCKEV		23	/* Socket Administrative Events */
 #define NETLINK_INET_DIAG	NETLINK_SOCK_DIAG
 
-#define MAX_LINKS 32
-#ifdef CONFIG_E404_OPLUS
-#define NETLINK_OPLUS_NWPOWERSTATE      36
-#define NETLINK_OPLUS_IPV6_RTO  42
-#endif
+#define MAX_LINKS 32		
 
 struct sockaddr_nl {
 	__kernel_sa_family_t	nl_family;	/* AF_NETLINK	*/

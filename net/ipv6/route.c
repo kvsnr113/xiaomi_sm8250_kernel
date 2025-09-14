@@ -2391,12 +2391,6 @@ static void __ip6_rt_update_pmtu(struct dst_entry *dst, const struct sock *sk,
 	if (confirm_neigh)
 		dst_confirm_neigh(dst, daddr);
 
-#ifdef CONFIG_E404_OPLUS
-	if (mtu < IPV6_MIN_MTU) {
-        return;
-	}
-#endif
-
 	mtu = max_t(u32, mtu, IPV6_MIN_MTU);
 	if (mtu >= dst_mtu(dst))
 		return;
