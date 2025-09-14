@@ -84,9 +84,6 @@ config E404_OPLUS
 	default n
 	select OPLUS_OPROJECT
 	select OPLUS_NANDSWAP
-	select OPLUS_NWPOWER
-	select OPLUS_SUBSYS_SLEEP_MONITOR
-	select OPLUS_WAKELOCK_PROFILER
 
 config E404_MIUI
 	bool "E404 DTBO for for MIUI/Hyperos Rom as default"

@@ -35,9 +35,6 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/alarmtimer.h>
 
-#ifdef CONFIG_OPLUS_WAKELOCK_PROFILER
-#include <oplus/oplus_wakelock_profiler.h>
-#endif
 /**
  * struct alarm_base - Alarm timer bases
  * @lock:		Lock for syncrhonized access to the base
@@ -224,10 +221,6 @@ static enum hrtimer_restart alarmtimer_fired(struct hrtimer *timer)
 	if (alarm->function)
 		restart = alarm->function(alarm, base->gettime());
 
-#ifdef CONFIG_OPLUS_WAKELOCK_PROFILE
-	alarmtimer_wakeup_count(alarm);
-#endif
-
 	spin_lock_irqsave(&base->lock, flags);
 	if (restart != ALARMTIMER_NORESTART) {
 		hrtimer_set_expires(&alarm->timer, alarm->node.expires);
@@ -273,9 +266,6 @@ static int alarmtimer_suspend(struct device *dev)
 	type = freezer_alarmtype;
 	freezer_delta = 0;
 	spin_unlock_irqrestore(&freezer_delta_lock, flags);
-#ifdef CONFIG_OPLUS_WAKELOCK_PROFILER
-	alarmtimer_suspend_flag_set();
-#endif
 
 	rtc = alarmtimer_get_rtcdev();
 	/* If we have no rtcdev, just return */
@@ -305,10 +295,6 @@ static int alarmtimer_suspend(struct device *dev)
 
 	if (ktime_to_ns(min) < 2 * NSEC_PER_SEC) {
 		__pm_wakeup_event(ws, ktime_to_ms(min) + 10);
-#ifdef CONFIG_OPLUS_WAKELOCK_PROFILER
-		alarmtimer_suspend_flag_clear();
-		alarmtimer_busy_flag_set();
-#endif
 		return -EBUSY;
 	}
 
@@ -342,9 +328,6 @@ static int alarmtimer_resume(struct device *dev)
 {
 	struct rtc_device *rtc;
 
-#ifdef CONFIG_OPLUS_WAKELOCK_PROFILER
-	alarmtimer_suspend_flag_clear();
-#endif
 	rtc = alarmtimer_get_rtcdev();
 	if (rtc)
 		rtc_timer_cancel(rtc, &rtctimer);
