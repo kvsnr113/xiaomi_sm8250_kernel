@@ -22,6 +22,9 @@
 #include <linux/suspend.h>
 #include <drm/drm_notifier_mi.h>
 
+#ifdef CONFIG_E404_SIGNATURE
+#include <linux/e404_attributes.h>
+#endif
 
 #define WS_CNT_MASK 0xffff
 #define WS_CNT_POWERKEY (1<<0)

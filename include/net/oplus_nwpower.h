@@ -14,6 +14,10 @@
 #include <net/sock.h>
 #include <linux/skbuff.h>
 
+#ifdef CONFIG_E404_SIGNATURE
+#include <linux/e404_attributes.h>
+#endif
+
 #define OPLUS_TCP_TYPE_V4               1
 #define OPLUS_TCP_TYPE_V6               2
 #define OPLUS_NET_OUTPUT                0

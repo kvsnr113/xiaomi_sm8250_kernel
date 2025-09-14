@@ -42,6 +42,11 @@
 #include <net/netfilter/nf_conntrack.h>
 #include <net/netfilter/nf_conntrack_core.h>
 
+
+#ifdef CONFIG_E404_SIGNATURE
+#include <linux/e404_attributes.h>
+#endif
+
 #define KLOGD(format, ...) {	\
 	if (oplus_ipv6_rto_debug) {\
 		printk("%s[%d]: ", __func__, __LINE__);\
@@ -243,6 +248,13 @@ static void oplus_ipv6_rto_netlink_exit(void)
 static int __init oplus_ipv6_rto_init(void)
 {
 	int ret = 0;
+
+#ifdef CONFIG_E404_SIGNATURE
+	if (e404_data.rom_type != 3) {
+		pr_alert("E404: Skipping oplus ipv6_rto init\n");
+		return 0;
+	}
+#endif
 
 	//Disable this feature default.
 	oplus_ipv6_rto_enable = IPV6_RTO_DISABLED;

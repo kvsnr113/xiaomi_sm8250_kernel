@@ -7,6 +7,10 @@
 #include "oplus_project_data_ocdt.h"
 #include "oplus_project_oldcdt.h"
 
+#ifdef CONFIG_E404_SIGNATURE
+#include <linux/e404_attributes.h>
+#endif
+
 #define ALIGN4(s) ((sizeof(s) + 3)&(~0x3))
 
 #define FEATURE1_OPEARTOR_OPEN_MASK 0000
