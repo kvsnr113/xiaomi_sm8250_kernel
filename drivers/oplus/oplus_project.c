@@ -513,6 +513,13 @@ static int __init oplus_project_init(void)
 {
     struct proc_dir_entry *p_entry;
 
+#ifdef CONFIG_E404_SIGNATURE
+    if (e404_data.rom_type != 3) {
+        pr_alert("E404: Skipping oplus project init)\n");
+        return 0;
+    }
+#endif
+
     oplus_info = proc_mkdir("oplusVersion", NULL);
     if (!oplus_info) {
         goto error_init;

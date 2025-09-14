@@ -1529,6 +1529,12 @@ static void nandswap_stop(void)
 
 static int __init nandswap_init(void)
 {
+#ifdef CONFIG_E404_SIGNATURE
+	if (e404_data.rom_type != 3) {
+		pr_alert("E404: Skipping oplus nandswap init\n");
+		return 0;
+	}
+#endif
 	//TODO: priority tuning for nswapoutd/nswapind
 	//struct sched_param param = { .sched_priority = MAX_USER_RT_PRIO -1 };
 	//struct sched_param param = { .sched_priority = 1 };

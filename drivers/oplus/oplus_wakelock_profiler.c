@@ -713,6 +713,14 @@ static int __init wakelock_printk_function_init(void)
 }
 
 static int __init wakelock_profile_init(void) {
+
+#ifdef CONFIG_E404_SIGNATURE
+	if (e404_data.rom_type != 3) {
+		pr_alert("E404: Skipping wakelock_profile init\n");
+		return 0;
+	}
+#endif
+
 	get_platform();
 	wakelock_statistics_function_init();
 	wakelock_printk_function_init();

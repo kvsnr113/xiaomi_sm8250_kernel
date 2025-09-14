@@ -1,3 +1,8 @@
+
+#ifdef CONFIG_E404_SIGNATURE
+#include <linux/e404_attributes.h>
+#endif
+
 #ifndef _OPLUS_SUBSYS_SLEEP_MONITOR_H
 #define _OPLUS_SUBSYS_SLEEP_MONITOR_H
 

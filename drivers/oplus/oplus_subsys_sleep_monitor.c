@@ -734,6 +734,14 @@ static const struct proc_ops slpi_sleepmon_compact_fops = {
 
 static int __init subsys_sleepmon_init(void)
 {
+
+#ifdef CONFIG_E404_SIGNATURE
+	if (e404_data.rom_type != 3) {
+		pr_alert("E404: Skipping subsys_sleepmon init\n");
+		return 0;
+	}
+#endif
+
 	subsys_proc = proc_mkdir("subsys_sleepmon", NULL);
 
 	proc_create("adsp", 0444, subsys_proc, &adsp_sleepmon_fops);
