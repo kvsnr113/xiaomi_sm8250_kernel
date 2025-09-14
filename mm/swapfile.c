@@ -48,6 +48,10 @@
 #include <linux/suspend.h>
 #endif
 
+#ifdef CONFIG_E404_SIGNATURE
+#include <linux/e404_attributes.h>
+#endif
+
 static bool swap_count_continued(struct swap_info_struct *, pgoff_t,
 				 unsigned char);
 static void free_swap_count_continuations(struct swap_info_struct *);
@@ -973,9 +977,12 @@ int get_swap_pages(int n_goal, swp_entry_t swp_entries[], int entry_size)
 	WARN_ON_ONCE(n_goal > 1 && size == SWAPFILE_CLUSTER);
 
 #ifdef CONFIG_OPLUS_NANDSWAP
-	if (nandswap_si)
+	if ((e404_data.rom_type == 3) && nandswap_si) {
 		nandswap_avail_pgs = nandswap_si->pages - nandswap_si->inuse_pages;
-	avail_pgs = (atomic_long_read(&nr_swap_pages) - nandswap_avail_pgs) / size;
+		avail_pgs = (atomic_long_read(&nr_swap_pages) - nandswap_avail_pgs) / size;
+	} else {
+		avail_pgs = atomic_long_read(&nr_swap_pages) / size;
+	}
 #else
 	avail_pgs = atomic_long_read(&nr_swap_pages) / size;
 #endif
@@ -1020,11 +1027,13 @@ start_over:
 start:
 		spin_lock(&si->lock);
 #ifdef CONFIG_OPLUS_NANDSWAP
-		if ((current_is_nswapoutd() && !(si->flags & SWP_NANDSWAP)) ||
-			(!current_is_nswapoutd() && (si->flags & SWP_NANDSWAP))) {
-			spin_lock(&swap_avail_lock);
-			spin_unlock(&si->lock);
-			goto nextsi;
+		if (e404_data.rom_type == 3) {
+			if ((current_is_nswapoutd() && !(si->flags & SWP_NANDSWAP)) ||
+				(!current_is_nswapoutd() && (si->flags & SWP_NANDSWAP))) {
+				spin_lock(&swap_avail_lock);
+				spin_unlock(&si->lock);
+				goto nextsi;
+			}
 		}
 #endif
 		if (!si->highest_bit || !(si->flags & SWP_WRITEOK)) {
@@ -2524,9 +2533,11 @@ static void _enable_swap_info(struct swap_info_struct *p, int prio,
 	total_swap_pages += p->pages;
 
 #ifdef CONFIG_OPLUS_NANDSWAP
-	if (p->prio == SWAP_NANDSWAP_PRIO) {
-		p->flags |= SWP_NANDSWAP;
-		nandswap_si = p;
+	if (e404_data.rom_type == 3) {
+		if (p->prio == SWAP_NANDSWAP_PRIO) {
+			p->flags |= SWP_NANDSWAP;
+			nandswap_si = p;
+		}
 	}
 #endif
 
@@ -2648,7 +2659,7 @@ SYSCALL_DEFINE1(swapoff, const char __user *, specialfile)
 	total_swap_pages -= p->pages;
 	p->flags &= ~SWP_WRITEOK;
 #ifdef CONFIG_OPLUS_NANDSWAP
-	if (p->flags & SWP_NANDSWAP)
+	if ((e404_data.rom_type == 3) && p->flags & SWP_NANDSWAP)
 		nandswap_si = NULL;
 #endif
 	spin_unlock(&p->lock);
@@ -3426,7 +3437,7 @@ void si_swapinfo(struct sysinfo *val)
 		if ((si->flags & SWP_USED) && !(si->flags & SWP_WRITEOK))
 			nr_to_be_unused += si->inuse_pages;
 #ifdef CONFIG_OPLUS_NANDSWAP
-		if (si->flags & SWP_NANDSWAP) {
+		if ((e404_data.rom_type == 3) && si->flags & SWP_NANDSWAP) {
 			if ((si->flags & SWP_USED) && !(si->flags & SWP_WRITEOK))
 				nandswap_free = si->pages;
 			else

@@ -25,6 +25,10 @@
 #include <asm/pgtable.h>
 #include "internal.h"
 
+#ifdef CONFIG_E404_SIGNATURE
+#include <linux/e404_attributes.h>
+#endif
+
 /*
  * swapper_space is a fiction, retained to simplify the path through
  * vmscan's shrink_page_list.
@@ -101,7 +105,7 @@ void show_swap_cache_info(void)
 	unsigned long totalswap = total_swap_pages;
 
 #ifdef CONFIG_OPLUS_NANDSWAP
-	if (nandswap_si)
+	if ((e404_data.rom_type == 3) && nandswap_si)
 		totalswap -= nandswap_si->pages;
 #endif
 

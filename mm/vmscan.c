@@ -51,6 +51,10 @@
 #include <linux/dax.h>
 #include <linux/psi.h>
 
+#ifdef CONFIG_E404_SIGNATURE
+#include <linux/e404_attributes.h>
+#endif
+
 #include <asm/tlbflush.h>
 #include <asm/div64.h>
 
@@ -2422,7 +2426,7 @@ static void get_scan_count(struct lruvec *lruvec, struct mem_cgroup *memcg,
 
 #ifdef CONFIG_OPLUS_NANDSWAP
 	unsigned long totalswap = total_swap_pages;
-	if (nandswap_si)
+	if ((e404_data.rom_type == 3) && nandswap_si)
 		totalswap -= nandswap_si->pages;
 #endif
 
