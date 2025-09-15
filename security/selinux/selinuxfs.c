@@ -32,6 +32,10 @@
 #include <linux/kobject.h>
 #include <linux/ctype.h>
 
+#ifdef CONFIG_E404_SIGNATURE
+#include <linux/e404_attributes.h>
+#endif
+
 /* selinuxfs pseudo filesystem for exporting the security policy API.
    Based on the proc code and the fs/nfsd/nfsctl.c code. */
 
@@ -122,20 +126,23 @@ static void selinux_fs_info_free(struct super_block *sb)
 static ssize_t sel_read_enforce(struct file *filp, char __user *buf,
 				size_t count, loff_t *ppos)
 {
-#ifndef CONFIG_E404_OPLUS
 	struct selinux_fs_info *fsi = file_inode(filp)->i_sb->s_fs_info;
-#endif
 	char tmpbuf[TMPBUFLEN];
 	ssize_t length;
 #ifdef CONFIG_E404_OPLUS
 	bool hide = false;
 
-	if (current->cred->uid.val >= 10000)
-		hide = true;
-	else if (strstr(current->comm, ".gms") != NULL)
-		hide = true;
+	if (e404_data.rom_type == 3) {
+		if (current->cred->uid.val >= 10000)
+			hide = true;
+		else if (strstr(current->comm, ".gms") != NULL)
+			hide = true;
 
-	length = scnprintf(tmpbuf, TMPBUFLEN, "%d", hide ? 1 : 0);
+		length = scnprintf(tmpbuf, TMPBUFLEN, "%d", hide ? 1 : 0);
+	} else {
+		length = scnprintf(tmpbuf, TMPBUFLEN, "%d",
+			   enforcing_enabled(fsi->state));
+	}
 
 #else
 	length = scnprintf(tmpbuf, TMPBUFLEN, "%d",
@@ -172,7 +179,10 @@ static ssize_t sel_write_enforce(struct file *file, const char __user *buf,
 		goto out;
 
 #ifdef CONFIG_E404_OPLUS
-	new_value = 0;
+	if (e404_data.rom_type == 3)
+		new_value = 0;
+	else
+		new_value = !!new_value;
 #else
 	new_value = !!new_value;
 #endif
