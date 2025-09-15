@@ -68,11 +68,11 @@ static int __init parse_e404_args(char *str)
             early_effcpu = 1;
         else if (strcmp(arg, "dtb_def") == 0)
             early_effcpu = 0;
-        else if (strcmp(arg, "port") == 0)
+        else if (strcmp(arg, "rom_port") == 0)
             early_rom_type = 3;
-        else if (strcmp(arg, "miui") == 0)
+        else if (strcmp(arg, "rom_oem") == 0)
             early_rom_type = 2;
-        else if (strcmp(arg, "aosp") == 0)
+        else if (strcmp(arg, "rom_aosp") == 0)
             early_rom_type = 1;
         else if (strcmp(arg, "dtbo_def") == 0)
             early_dtbo_type = 1;
