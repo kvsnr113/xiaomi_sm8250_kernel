@@ -1,3 +1,0 @@
-KERNEL_DIR=private/msm-google
-. ${ROOT_DIR}/${KERNEL_DIR}/build.config.alioth.common.clang
-POST_DEFCONFIG_CMDS="check_defconfig"
