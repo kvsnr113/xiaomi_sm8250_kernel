@@ -24,6 +24,10 @@
 /* add for get hw country */
 #include <soc/qcom/socinfo.h>
 
+#ifdef CONFIG_E404_SIGNATURE
+#include <linux/e404_attributes.h>
+#endif
+
 #define FG_GEN4_DEV_NAME	"qcom,fg-gen4"
 #define TTF_AWAKE_VOTER		"fg_ttf_awake"
 
@@ -2096,6 +2100,19 @@ static int fg_gen4_get_batt_profile(struct fg_dev *fg)
 	} else {
 #ifdef CONFIG_BATT_VERIFY_BY_DS28E16
 		profile_node = ERR_PTR(-ENXIO);
+
+#ifdef CONFIG_E404_SIGNATURE
+		/* force alioth to load 5000mah profile if user wanted */
+		if (e404_data.batt_profile == 2 && !fg->profile_already_find) {
+			pr_alert("E404: forcing j3ssun_5000mah profile\n");
+			fg->profile_already_find = true;
+			profile_node = of_batterydata_get_best_profile(
+								batt_node,
+								fg->batt_id_ohms / 1000,
+								"j3ssun_5000mah");
+		}
+#endif
+
 		/* if cmdline battery profile vendor is passed to fg driver, use cmdline result */
 		if (is_batt_vendor_gyb && !fg->profile_already_find) {
 			pr_err("is_batt_vendor_gyb is %d\n", is_batt_vendor_gyb);
