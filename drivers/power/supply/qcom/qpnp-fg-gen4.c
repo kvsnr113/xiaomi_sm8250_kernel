@@ -2148,26 +2148,26 @@ static int fg_gen4_get_batt_profile(struct fg_dev *fg)
 		if (retry_batt_profile < BATT_PROFILE_RETRY_COUNT_MAX
 				&& !fg->profile_already_find) {
 			if (profile_node == ERR_PTR(-ENXIO)) {
-				pr_warn("verifty battery fail. recheck after, retry:%d\n",
+				pr_warn("verify battery fail. recheck after, retry:%d\n",
 					retry_batt_profile);
 				queue_delayed_work(system_power_efficient_wq, &fg->profile_load_work, 500);
 			}
 		} else if (!fg->profile_already_find) {
 			if (!chip->dt.sun_profile_only) {
-				pr_warn("verifty battery fail. use default profile j2gybm4n_4780mah\n");
+				pr_warn("verify battery fail. use default profile j2gybm4n_4780mah\n");
 				profile_node = of_batterydata_get_best_profile(batt_node,
 						fg->batt_id_ohms / 1000, "j2gybm4n_4780mah");
 			} else {
 				if (chip->dt.j3s_batt_profile) {
-					pr_warn("verifty battery fail. use default profile j3ssun_5000mah\n");
+					pr_warn("verify battery fail. use default profile j3ssun_5000mah\n");
 					profile_node = of_batterydata_get_best_profile(batt_node,
 						fg->batt_id_ohms / 1000, "j3ssun_5000mah");
 				} else if (chip->dt.k11a_batt_profile) {
-					pr_warn("verifty battery fail. use default profile k11a_fmt_4520mah\n");
+					pr_warn("verify battery fail. use default profile k11a_fmt_4520mah\n");
 					profile_node = of_batterydata_get_best_profile(batt_node,
 						fg->batt_id_ohms / 1000, "K11A_FMT_4520mah");
 				} else {
-					pr_warn("verifty battery fail. use default profile j11sun_4700mah\n");
+					pr_warn("verify battery fail. use default profile j11sun_4700mah\n");
 					profile_node = of_batterydata_get_best_profile(batt_node,
 						fg->batt_id_ohms / 1000, "j11sun_4700mah");
 				}
