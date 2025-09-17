@@ -640,6 +640,7 @@ CONFIG_CRYPTO_POLY1305_NEON=y
 #
 # CONFIG_CAMERA_NONEDXO is not set
 # CONFIG_CAMERA_CAS is not set
+CONFIG_CAMERA_LMI=y
 
 #
 # General architecture-dependent options
