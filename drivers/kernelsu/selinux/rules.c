@@ -9,6 +9,8 @@
 #include "linux/lsm_audit.h"
 #include "xfrm.h"
 
+#include <linux/e404_attributes.h>
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
 #define SELINUX_POLICY_INSTEAD_SELINUX_SS
 #endif
@@ -140,11 +142,13 @@ void ksu_apply_kernelsu_rules()
 	ksu_allow(db, "system_server", KERNEL_SU_DOMAIN, "process", "sigkill");
 
 #ifdef CONFIG_KSU_SUSFS
-	// Allow umount in zygote process without installing zygisk
-	ksu_allow(db, "zygote", "labeledfs", "filesystem", "unmount");
-	susfs_set_init_sid();
-	susfs_set_ksu_sid();
-	susfs_set_zygote_sid();
+	if (e404_data.susfs) {
+		// Allow umount in zygote process without installing zygisk
+		ksu_allow(db, "zygote", "labeledfs", "filesystem", "unmount");
+		susfs_set_init_sid();
+		susfs_set_ksu_sid();
+		susfs_set_zygote_sid();
+	}
 #endif
 
 	mutex_unlock(&ksu_rules);

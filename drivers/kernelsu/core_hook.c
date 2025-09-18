@@ -426,7 +426,8 @@ int ksu_handle_prctl(int option, unsigned long arg2, unsigned long arg3,
 		case EVENT_POST_FS_DATA: {
 			static bool post_fs_data_lock = false;
 #ifdef CONFIG_KSU_SUSFS
-			susfs_on_post_fs_data();
+			if (e404_data.susfs)
+				susfs_on_post_fs_data();
 #endif
 			if (!post_fs_data_lock) {
 				post_fs_data_lock = true;
@@ -521,334 +522,336 @@ int ksu_handle_prctl(int option, unsigned long arg2, unsigned long arg3,
 	}
 
 #ifdef CONFIG_KSU_SUSFS
-	if (current_uid_val == 0) {
-#ifdef CONFIG_KSU_SUSFS_SUS_PATH
-		if (arg2 == CMD_SUSFS_ADD_SUS_PATH) {
-			int error = 0;
-			if (!ksu_access_ok((void __user*)arg3, sizeof(struct st_susfs_sus_path))) {
-				pr_err("susfs: CMD_SUSFS_ADD_SUS_PATH -> arg3 is not accessible\n");
+	if (e404_data.susfs) {
+		if (current_uid_val == 0) {
+	#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+			if (arg2 == CMD_SUSFS_ADD_SUS_PATH) {
+				int error = 0;
+				if (!ksu_access_ok((void __user*)arg3, sizeof(struct st_susfs_sus_path))) {
+					pr_err("susfs: CMD_SUSFS_ADD_SUS_PATH -> arg3 is not accessible\n");
+					return 0;
+				}
+				if (!ksu_access_ok((void __user*)arg5, sizeof(error))) {
+					pr_err("susfs: CMD_SUSFS_ADD_SUS_PATH -> arg5 is not accessible\n");
+					return 0;
+				}
+				error = susfs_add_sus_path((struct st_susfs_sus_path __user*)arg3);
+				pr_info("susfs: CMD_SUSFS_ADD_SUS_PATH -> ret: %d\n", error);
+				if (copy_to_user((void __user*)arg5, &error, sizeof(error)))
+					pr_info("susfs: copy_to_user() failed\n");
 				return 0;
 			}
-			if (!ksu_access_ok((void __user*)arg5, sizeof(error))) {
-				pr_err("susfs: CMD_SUSFS_ADD_SUS_PATH -> arg5 is not accessible\n");
+	#endif //#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+	#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
+			if (arg2 == CMD_SUSFS_ADD_SUS_MOUNT) {
+				int error = 0;
+				if (!ksu_access_ok((void __user*)arg3, sizeof(struct st_susfs_sus_mount))) {
+					pr_err("susfs: CMD_SUSFS_ADD_SUS_MOUNT -> arg3 is not accessible\n");
+					return 0;
+				}
+				if (!ksu_access_ok((void __user*)arg5, sizeof(error))) {
+					pr_err("susfs: CMD_SUSFS_ADD_SUS_MOUNT -> arg5 is not accessible\n");
+					return 0;
+				}
+				error = susfs_add_sus_mount((struct st_susfs_sus_mount __user*)arg3);
+				pr_info("susfs: CMD_SUSFS_ADD_SUS_MOUNT -> ret: %d\n", error);
+				if (copy_to_user((void __user*)arg5, &error, sizeof(error)))
+					pr_info("susfs: copy_to_user() failed\n");
 				return 0;
 			}
-			error = susfs_add_sus_path((struct st_susfs_sus_path __user*)arg3);
-			pr_info("susfs: CMD_SUSFS_ADD_SUS_PATH -> ret: %d\n", error);
-			if (copy_to_user((void __user*)arg5, &error, sizeof(error)))
-				pr_info("susfs: copy_to_user() failed\n");
-			return 0;
+	#endif //#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
+	#ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
+			if (arg2 == CMD_SUSFS_ADD_SUS_KSTAT) {
+				int error = 0;
+				if (!ksu_access_ok((void __user*)arg3, sizeof(struct st_susfs_sus_kstat))) {
+					pr_err("susfs: CMD_SUSFS_ADD_SUS_KSTAT -> arg3 is not accessible\n");
+					return 0;
+				}
+				if (!ksu_access_ok((void __user*)arg5, sizeof(error))) {
+					pr_err("susfs: CMD_SUSFS_ADD_SUS_KSTAT -> arg5 is not accessible\n");
+					return 0;
+				}
+				error = susfs_add_sus_kstat((struct st_susfs_sus_kstat __user*)arg3);
+				pr_info("susfs: CMD_SUSFS_ADD_SUS_KSTAT -> ret: %d\n", error);
+				if (copy_to_user((void __user*)arg5, &error, sizeof(error)))
+					pr_info("susfs: copy_to_user() failed\n");
+				return 0;
+			}
+			if (arg2 == CMD_SUSFS_UPDATE_SUS_KSTAT) {
+				int error = 0;
+				if (!ksu_access_ok((void __user*)arg3, sizeof(struct st_susfs_sus_kstat))) {
+					pr_err("susfs: CMD_SUSFS_UPDATE_SUS_KSTAT -> arg3 is not accessible\n");
+					return 0;
+				}
+				if (!ksu_access_ok((void __user*)arg5, sizeof(error))) {
+					pr_err("susfs: CMD_SUSFS_UPDATE_SUS_KSTAT -> arg5 is not accessible\n");
+					return 0;
+				}
+				error = susfs_update_sus_kstat((struct st_susfs_sus_kstat __user*)arg3);
+				pr_info("susfs: CMD_SUSFS_UPDATE_SUS_KSTAT -> ret: %d\n", error);
+				if (copy_to_user((void __user*)arg5, &error, sizeof(error)))
+					pr_info("susfs: copy_to_user() failed\n");
+				return 0;
+			}
+			if (arg2 == CMD_SUSFS_ADD_SUS_KSTAT_STATICALLY) {
+				int error = 0;
+				if (!ksu_access_ok((void __user*)arg3, sizeof(struct st_susfs_sus_kstat))) {
+					pr_err("susfs: CMD_SUSFS_ADD_SUS_KSTAT_STATICALLY -> arg3 is not accessible\n");
+					return 0;
+				}
+				if (!ksu_access_ok((void __user*)arg5, sizeof(error))) {
+					pr_err("susfs: CMD_SUSFS_ADD_SUS_KSTAT_STATICALLY -> arg5 is not accessible\n");
+					return 0;
+				}
+				error = susfs_add_sus_kstat((struct st_susfs_sus_kstat __user*)arg3);
+				pr_info("susfs: CMD_SUSFS_ADD_SUS_KSTAT_STATICALLY -> ret: %d\n", error);
+				if (copy_to_user((void __user*)arg5, &error, sizeof(error)))
+					pr_info("susfs: copy_to_user() failed\n");
+				return 0;
+			}
+	#endif //#ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
+	#ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
+			if (arg2 == CMD_SUSFS_ADD_TRY_UMOUNT) {
+				int error = 0;
+				if (!ksu_access_ok((void __user*)arg3, sizeof(struct st_susfs_try_umount))) {
+					pr_err("susfs: CMD_SUSFS_ADD_TRY_UMOUNT -> arg3 is not accessible\n");
+					return 0;
+				}
+				if (!ksu_access_ok((void __user*)arg5, sizeof(error))) {
+					pr_err("susfs: CMD_SUSFS_ADD_TRY_UMOUNT -> arg5 is not accessible\n");
+					return 0;
+				}
+				error = susfs_add_try_umount((struct st_susfs_try_umount __user*)arg3);
+				pr_info("susfs: CMD_SUSFS_ADD_TRY_UMOUNT -> ret: %d\n", error);
+				if (copy_to_user((void __user*)arg5, &error, sizeof(error)))
+					pr_info("susfs: copy_to_user() failed\n");
+				return 0;
+			}
+			if (arg2 == CMD_SUSFS_RUN_UMOUNT_FOR_CURRENT_MNT_NS) {
+				int error = 0;
+				susfs_run_try_umount_for_current_mnt_ns();
+				pr_info("susfs: CMD_SUSFS_RUN_UMOUNT_FOR_CURRENT_MNT_NS -> ret: %d\n", error);
+			}
+	#endif //#ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
+	#ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME
+			if (arg2 == CMD_SUSFS_SET_UNAME) {
+				int error = 0;
+				if (!ksu_access_ok((void __user*)arg3, sizeof(struct st_susfs_uname))) {
+					pr_err("susfs: CMD_SUSFS_SET_UNAME -> arg3 is not accessible\n");
+					return 0;
+				}
+				if (!ksu_access_ok((void __user*)arg5, sizeof(error))) {
+					pr_err("susfs: CMD_SUSFS_SET_UNAME -> arg5 is not accessible\n");
+					return 0;
+				}
+				error = susfs_set_uname((struct st_susfs_uname __user*)arg3);
+				pr_info("susfs: CMD_SUSFS_SET_UNAME -> ret: %d\n", error);
+				if (copy_to_user((void __user*)arg5, &error, sizeof(error)))
+					pr_info("susfs: copy_to_user() failed\n");
+				return 0;
+			}
+	#endif //#ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME
+	#ifdef CONFIG_KSU_SUSFS_ENABLE_LOG
+			if (arg2 == CMD_SUSFS_ENABLE_LOG) {
+				int error = 0;
+				if (arg3 != 0 && arg3 != 1) {
+					pr_err("susfs: CMD_SUSFS_ENABLE_LOG -> arg3 can only be 0 or 1\n");
+					return 0;
+				}
+				susfs_set_log(arg3);
+				if (copy_to_user((void __user*)arg5, &error, sizeof(error)))
+					pr_info("susfs: copy_to_user() failed\n");
+				return 0;
+			}
+	#endif //#ifdef CONFIG_KSU_SUSFS_ENABLE_LOG
+	#ifdef CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
+			if (arg2 == CMD_SUSFS_SET_CMDLINE_OR_BOOTCONFIG) {
+				int error = 0;
+				if (!ksu_access_ok((void __user*)arg3, SUSFS_FAKE_CMDLINE_OR_BOOTCONFIG_SIZE)) {
+					pr_err("susfs: CMD_SUSFS_SET_CMDLINE_OR_BOOTCONFIG -> arg3 is not accessible\n");
+					return 0;
+				}
+				if (!ksu_access_ok((void __user*)arg5, sizeof(error))) {
+					pr_err("susfs: CMD_SUSFS_SET_CMDLINE_OR_BOOTCONFIG -> arg5 is not accessible\n");
+					return 0;
+				}
+				error = susfs_set_cmdline_or_bootconfig((char __user*)arg3);
+				pr_info("susfs: CMD_SUSFS_SET_CMDLINE_OR_BOOTCONFIG -> ret: %d\n", error);
+				if (copy_to_user((void __user*)arg5, &error, sizeof(error)))
+					pr_info("susfs: copy_to_user() failed\n");
+				return 0;
+			}
+	#endif //#ifdef CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
+	#ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
+			if (arg2 == CMD_SUSFS_ADD_OPEN_REDIRECT) {
+				int error = 0;
+				if (!ksu_access_ok((void __user*)arg3, sizeof(struct st_susfs_open_redirect))) {
+					pr_err("susfs: CMD_SUSFS_ADD_OPEN_REDIRECT -> arg3 is not accessible\n");
+					return 0;
+				}
+				if (!ksu_access_ok((void __user*)arg5, sizeof(error))) {
+					pr_err("susfs: CMD_SUSFS_ADD_OPEN_REDIRECT -> arg5 is not accessible\n");
+					return 0;
+				}
+				error = susfs_add_open_redirect((struct st_susfs_open_redirect __user*)arg3);
+				pr_info("susfs: CMD_SUSFS_ADD_OPEN_REDIRECT -> ret: %d\n", error);
+				if (copy_to_user((void __user*)arg5, &error, sizeof(error)))
+					pr_info("susfs: copy_to_user() failed\n");
+				return 0;
+			}
+	#endif //#ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
+	#ifdef CONFIG_KSU_SUSFS_SUS_SU
+			if (arg2 == CMD_SUSFS_SUS_SU) {
+				int error = 0;
+				if (!ksu_access_ok((void __user*)arg3, sizeof(struct st_sus_su))) {
+					pr_err("susfs: CMD_SUSFS_SUS_SU -> arg3 is not accessible\n");
+					return 0;
+				}
+				if (!ksu_access_ok((void __user*)arg5, sizeof(error))) {
+					pr_err("susfs: CMD_SUSFS_SUS_SU -> arg5 is not accessible\n");
+					return 0;
+				}
+				error = susfs_sus_su((struct st_sus_su __user*)arg3);
+				pr_info("susfs: CMD_SUSFS_SUS_SU -> ret: %d\n", error);
+				if (copy_to_user((void __user*)arg5, &error, sizeof(error)))
+					pr_info("susfs: copy_to_user() failed\n");
+				return 0;
+			}
+	#endif //#ifdef CONFIG_KSU_SUSFS_SUS_SU
+			if (arg2 == CMD_SUSFS_SHOW_VERSION) {
+				int error = 0;
+				int len_of_susfs_version = strlen(SUSFS_VERSION);
+				char *susfs_version = SUSFS_VERSION;
+				if (!ksu_access_ok((void __user*)arg3, len_of_susfs_version+1)) {
+					pr_err("susfs: CMD_SUSFS_SHOW_VERSION -> arg3 is not accessible\n");
+					return 0;
+				}
+				if (!ksu_access_ok((void __user*)arg5, sizeof(error))) {
+					pr_err("susfs: CMD_SUSFS_SHOW_VERSION -> arg5 is not accessible\n");
+					return 0;
+				}
+				error = copy_to_user((void __user*)arg3, (void*)susfs_version, len_of_susfs_version+1);
+				pr_info("susfs: CMD_SUSFS_SHOW_VERSION -> ret: %d\n", error);
+				if (copy_to_user((void __user*)arg5, &error, sizeof(error)))
+					pr_info("susfs: copy_to_user() failed\n");
+				return 0;
+			}
+			if (arg2 == CMD_SUSFS_SHOW_ENABLED_FEATURES) {
+				int error = 0;
+				u64 enabled_features = 0;
+				if (!ksu_access_ok((void __user*)arg3, sizeof(u64))) {
+					pr_err("susfs: CMD_SUSFS_SHOW_ENABLED_FEATURES -> arg3 is not accessible\n");
+					return 0;
+				}
+				if (!ksu_access_ok((void __user*)arg5, sizeof(error))) {
+					pr_err("susfs: CMD_SUSFS_SHOW_ENABLED_FEATURES -> arg5 is not accessible\n");
+					return 0;
+				}
+	#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+				enabled_features |= (1 << 0);
+	#endif
+	#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
+				enabled_features |= (1 << 1);
+	#endif
+	#ifdef CONFIG_KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT
+				enabled_features |= (1 << 2);
+	#endif
+	#ifdef CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT
+				enabled_features |= (1 << 3);
+	#endif
+	#ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
+				enabled_features |= (1 << 4);
+	#endif
+	#ifdef CONFIG_KSU_SUSFS_SUS_OVERLAYFS
+				enabled_features |= (1 << 5);
+	#endif
+	#ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
+				enabled_features |= (1 << 6);
+	#endif
+	#ifdef CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT
+				enabled_features |= (1 << 7);
+	#endif
+	#ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME
+				enabled_features |= (1 << 8);
+	#endif
+	#ifdef CONFIG_KSU_SUSFS_ENABLE_LOG
+				enabled_features |= (1 << 9);
+	#endif
+	#ifdef CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS
+				enabled_features |= (1 << 10);
+	#endif
+	#ifdef CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
+				enabled_features |= (1 << 11);
+	#endif
+	#ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
+				enabled_features |= (1 << 12);
+	#endif
+	#ifdef CONFIG_KSU_SUSFS_SUS_SU
+				enabled_features |= (1 << 13);
+	#endif
+	#ifdef CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT
+				enabled_features |= (1 << 14);
+	#endif
+				error = copy_to_user((void __user*)arg3, (void*)&enabled_features, sizeof(enabled_features));
+				pr_info("susfs: CMD_SUSFS_SHOW_ENABLED_FEATURES -> ret: %d\n", error);
+				if (copy_to_user((void __user*)arg5, &error, sizeof(error)))
+					pr_info("susfs: copy_to_user() failed\n");
+				return 0;
+			}
+			if (arg2 == CMD_SUSFS_SHOW_VARIANT) {
+				int error = 0;
+				int len_of_variant = strlen(SUSFS_VARIANT);
+				char *susfs_variant = SUSFS_VARIANT;
+				if (!ksu_access_ok((void __user*)arg3, len_of_variant+1)) {
+					pr_err("susfs: CMD_SUSFS_SHOW_VARIANT -> arg3 is not accessible\n");
+					return 0;
+				}
+				if (!ksu_access_ok((void __user*)arg5, sizeof(error))) {
+					pr_err("susfs: CMD_SUSFS_SHOW_VARIANT -> arg5 is not accessible\n");
+					return 0;
+				}
+				error = copy_to_user((void __user*)arg3, (void*)susfs_variant, len_of_variant+1);
+				pr_info("susfs: CMD_SUSFS_SHOW_VARIANT -> ret: %d\n", error);
+				if (copy_to_user((void __user*)arg5, &error, sizeof(error)))
+					pr_info("susfs: copy_to_user() failed\n");
+				return 0;
+			}
+	#ifdef CONFIG_KSU_SUSFS_SUS_SU
+			if (arg2 == CMD_SUSFS_IS_SUS_SU_READY) {
+				int error = 0;
+				if (!ksu_access_ok((void __user*)arg3, sizeof(susfs_is_sus_su_ready))) {
+					pr_err("susfs: CMD_SUSFS_IS_SUS_SU_READY -> arg3 is not accessible\n");
+					return 0;
+				}
+				if (!ksu_access_ok((void __user*)arg5, sizeof(error))) {
+					pr_err("susfs: CMD_SUSFS_IS_SUS_SU_READY -> arg5 is not accessible\n");
+					return 0;
+				}
+				error = copy_to_user((void __user*)arg3, (void*)&susfs_is_sus_su_ready, sizeof(susfs_is_sus_su_ready));
+				pr_info("susfs: CMD_SUSFS_IS_SUS_SU_READY -> ret: %d\n", error);
+				if (copy_to_user((void __user*)arg5, &error, sizeof(error)))
+					pr_info("susfs: copy_to_user() failed\n");
+				return 0;
+			}
+			if (arg2 == CMD_SUSFS_SHOW_SUS_SU_WORKING_MODE) {
+				int error = 0;
+				int working_mode = susfs_get_sus_su_working_mode();
+				if (!ksu_access_ok((void __user*)arg3, sizeof(working_mode))) {
+					pr_err("susfs: CMD_SUSFS_SHOW_SUS_SU_WORKING_MODE -> arg3 is not accessible\n");
+					return 0;
+				}
+				if (!ksu_access_ok((void __user*)arg5, sizeof(error))) {
+					pr_err("susfs: CMD_SUSFS_SHOW_SUS_SU_WORKING_MODE -> arg5 is not accessible\n");
+					return 0;
+				}
+				error = copy_to_user((void __user*)arg3, (void*)&working_mode, sizeof(working_mode));
+				pr_info("susfs: CMD_SUSFS_SHOW_SUS_SU_WORKING_MODE -> ret: %d\n", error);
+				if (copy_to_user((void __user*)arg5, &error, sizeof(error)))
+					pr_info("susfs: copy_to_user() failed\n");
+				return 0;
+			}
+	#endif // #ifdef CONFIG_KSU_SUSFS_SUS_SU
 		}
-#endif //#ifdef CONFIG_KSU_SUSFS_SUS_PATH
-#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-		if (arg2 == CMD_SUSFS_ADD_SUS_MOUNT) {
-			int error = 0;
-			if (!ksu_access_ok((void __user*)arg3, sizeof(struct st_susfs_sus_mount))) {
-				pr_err("susfs: CMD_SUSFS_ADD_SUS_MOUNT -> arg3 is not accessible\n");
-				return 0;
-			}
-			if (!ksu_access_ok((void __user*)arg5, sizeof(error))) {
-				pr_err("susfs: CMD_SUSFS_ADD_SUS_MOUNT -> arg5 is not accessible\n");
-				return 0;
-			}
-			error = susfs_add_sus_mount((struct st_susfs_sus_mount __user*)arg3);
-			pr_info("susfs: CMD_SUSFS_ADD_SUS_MOUNT -> ret: %d\n", error);
-			if (copy_to_user((void __user*)arg5, &error, sizeof(error)))
-				pr_info("susfs: copy_to_user() failed\n");
-			return 0;
-		}
-#endif //#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-#ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
-		if (arg2 == CMD_SUSFS_ADD_SUS_KSTAT) {
-			int error = 0;
-			if (!ksu_access_ok((void __user*)arg3, sizeof(struct st_susfs_sus_kstat))) {
-				pr_err("susfs: CMD_SUSFS_ADD_SUS_KSTAT -> arg3 is not accessible\n");
-				return 0;
-			}
-			if (!ksu_access_ok((void __user*)arg5, sizeof(error))) {
-				pr_err("susfs: CMD_SUSFS_ADD_SUS_KSTAT -> arg5 is not accessible\n");
-				return 0;
-			}
-			error = susfs_add_sus_kstat((struct st_susfs_sus_kstat __user*)arg3);
-			pr_info("susfs: CMD_SUSFS_ADD_SUS_KSTAT -> ret: %d\n", error);
-			if (copy_to_user((void __user*)arg5, &error, sizeof(error)))
-				pr_info("susfs: copy_to_user() failed\n");
-			return 0;
-		}
-		if (arg2 == CMD_SUSFS_UPDATE_SUS_KSTAT) {
-			int error = 0;
-			if (!ksu_access_ok((void __user*)arg3, sizeof(struct st_susfs_sus_kstat))) {
-				pr_err("susfs: CMD_SUSFS_UPDATE_SUS_KSTAT -> arg3 is not accessible\n");
-				return 0;
-			}
-			if (!ksu_access_ok((void __user*)arg5, sizeof(error))) {
-				pr_err("susfs: CMD_SUSFS_UPDATE_SUS_KSTAT -> arg5 is not accessible\n");
-				return 0;
-			}
-			error = susfs_update_sus_kstat((struct st_susfs_sus_kstat __user*)arg3);
-			pr_info("susfs: CMD_SUSFS_UPDATE_SUS_KSTAT -> ret: %d\n", error);
-			if (copy_to_user((void __user*)arg5, &error, sizeof(error)))
-				pr_info("susfs: copy_to_user() failed\n");
-			return 0;
-		}
-		if (arg2 == CMD_SUSFS_ADD_SUS_KSTAT_STATICALLY) {
-			int error = 0;
-			if (!ksu_access_ok((void __user*)arg3, sizeof(struct st_susfs_sus_kstat))) {
-				pr_err("susfs: CMD_SUSFS_ADD_SUS_KSTAT_STATICALLY -> arg3 is not accessible\n");
-				return 0;
-			}
-			if (!ksu_access_ok((void __user*)arg5, sizeof(error))) {
-				pr_err("susfs: CMD_SUSFS_ADD_SUS_KSTAT_STATICALLY -> arg5 is not accessible\n");
-				return 0;
-			}
-			error = susfs_add_sus_kstat((struct st_susfs_sus_kstat __user*)arg3);
-			pr_info("susfs: CMD_SUSFS_ADD_SUS_KSTAT_STATICALLY -> ret: %d\n", error);
-			if (copy_to_user((void __user*)arg5, &error, sizeof(error)))
-				pr_info("susfs: copy_to_user() failed\n");
-			return 0;
-        }
-#endif //#ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
-#ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
-		if (arg2 == CMD_SUSFS_ADD_TRY_UMOUNT) {
-			int error = 0;
-			if (!ksu_access_ok((void __user*)arg3, sizeof(struct st_susfs_try_umount))) {
-				pr_err("susfs: CMD_SUSFS_ADD_TRY_UMOUNT -> arg3 is not accessible\n");
-				return 0;
-			}
-			if (!ksu_access_ok((void __user*)arg5, sizeof(error))) {
-				pr_err("susfs: CMD_SUSFS_ADD_TRY_UMOUNT -> arg5 is not accessible\n");
-				return 0;
-			}
-			error = susfs_add_try_umount((struct st_susfs_try_umount __user*)arg3);
-			pr_info("susfs: CMD_SUSFS_ADD_TRY_UMOUNT -> ret: %d\n", error);
-			if (copy_to_user((void __user*)arg5, &error, sizeof(error)))
-				pr_info("susfs: copy_to_user() failed\n");
-			return 0;
-		}
-		if (arg2 == CMD_SUSFS_RUN_UMOUNT_FOR_CURRENT_MNT_NS) {
-			int error = 0;
-			susfs_run_try_umount_for_current_mnt_ns();
-			pr_info("susfs: CMD_SUSFS_RUN_UMOUNT_FOR_CURRENT_MNT_NS -> ret: %d\n", error);
-		}
-#endif //#ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
-#ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME
-		if (arg2 == CMD_SUSFS_SET_UNAME) {
-			int error = 0;
-			if (!ksu_access_ok((void __user*)arg3, sizeof(struct st_susfs_uname))) {
-				pr_err("susfs: CMD_SUSFS_SET_UNAME -> arg3 is not accessible\n");
-				return 0;
-			}
-			if (!ksu_access_ok((void __user*)arg5, sizeof(error))) {
-				pr_err("susfs: CMD_SUSFS_SET_UNAME -> arg5 is not accessible\n");
-				return 0;
-			}
-			error = susfs_set_uname((struct st_susfs_uname __user*)arg3);
-			pr_info("susfs: CMD_SUSFS_SET_UNAME -> ret: %d\n", error);
-			if (copy_to_user((void __user*)arg5, &error, sizeof(error)))
-				pr_info("susfs: copy_to_user() failed\n");
-			return 0;
-		}
-#endif //#ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME
-#ifdef CONFIG_KSU_SUSFS_ENABLE_LOG
-		if (arg2 == CMD_SUSFS_ENABLE_LOG) {
-			int error = 0;
-			if (arg3 != 0 && arg3 != 1) {
-				pr_err("susfs: CMD_SUSFS_ENABLE_LOG -> arg3 can only be 0 or 1\n");
-				return 0;
-			}
-			susfs_set_log(arg3);
-			if (copy_to_user((void __user*)arg5, &error, sizeof(error)))
-				pr_info("susfs: copy_to_user() failed\n");
-			return 0;
-		}
-#endif //#ifdef CONFIG_KSU_SUSFS_ENABLE_LOG
-#ifdef CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
-		if (arg2 == CMD_SUSFS_SET_CMDLINE_OR_BOOTCONFIG) {
-			int error = 0;
-			if (!ksu_access_ok((void __user*)arg3, SUSFS_FAKE_CMDLINE_OR_BOOTCONFIG_SIZE)) {
-				pr_err("susfs: CMD_SUSFS_SET_CMDLINE_OR_BOOTCONFIG -> arg3 is not accessible\n");
-				return 0;
-			}
-			if (!ksu_access_ok((void __user*)arg5, sizeof(error))) {
-				pr_err("susfs: CMD_SUSFS_SET_CMDLINE_OR_BOOTCONFIG -> arg5 is not accessible\n");
-				return 0;
-			}
-			error = susfs_set_cmdline_or_bootconfig((char __user*)arg3);
-			pr_info("susfs: CMD_SUSFS_SET_CMDLINE_OR_BOOTCONFIG -> ret: %d\n", error);
-			if (copy_to_user((void __user*)arg5, &error, sizeof(error)))
-				pr_info("susfs: copy_to_user() failed\n");
-			return 0;
-		}
-#endif //#ifdef CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
-#ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
-		if (arg2 == CMD_SUSFS_ADD_OPEN_REDIRECT) {
-			int error = 0;
-			if (!ksu_access_ok((void __user*)arg3, sizeof(struct st_susfs_open_redirect))) {
-				pr_err("susfs: CMD_SUSFS_ADD_OPEN_REDIRECT -> arg3 is not accessible\n");
-				return 0;
-			}
-			if (!ksu_access_ok((void __user*)arg5, sizeof(error))) {
-				pr_err("susfs: CMD_SUSFS_ADD_OPEN_REDIRECT -> arg5 is not accessible\n");
-				return 0;
-			}
-			error = susfs_add_open_redirect((struct st_susfs_open_redirect __user*)arg3);
-			pr_info("susfs: CMD_SUSFS_ADD_OPEN_REDIRECT -> ret: %d\n", error);
-			if (copy_to_user((void __user*)arg5, &error, sizeof(error)))
-				pr_info("susfs: copy_to_user() failed\n");
-			return 0;
-		}
-#endif //#ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
-#ifdef CONFIG_KSU_SUSFS_SUS_SU
-		if (arg2 == CMD_SUSFS_SUS_SU) {
-			int error = 0;
-			if (!ksu_access_ok((void __user*)arg3, sizeof(struct st_sus_su))) {
-				pr_err("susfs: CMD_SUSFS_SUS_SU -> arg3 is not accessible\n");
-				return 0;
-			}
-			if (!ksu_access_ok((void __user*)arg5, sizeof(error))) {
-				pr_err("susfs: CMD_SUSFS_SUS_SU -> arg5 is not accessible\n");
-				return 0;
-			}
-			error = susfs_sus_su((struct st_sus_su __user*)arg3);
-			pr_info("susfs: CMD_SUSFS_SUS_SU -> ret: %d\n", error);
-			if (copy_to_user((void __user*)arg5, &error, sizeof(error)))
-				pr_info("susfs: copy_to_user() failed\n");
-			return 0;
-		}
-#endif //#ifdef CONFIG_KSU_SUSFS_SUS_SU
-		if (arg2 == CMD_SUSFS_SHOW_VERSION) {
-			int error = 0;
-			int len_of_susfs_version = strlen(SUSFS_VERSION);
-			char *susfs_version = SUSFS_VERSION;
-			if (!ksu_access_ok((void __user*)arg3, len_of_susfs_version+1)) {
-				pr_err("susfs: CMD_SUSFS_SHOW_VERSION -> arg3 is not accessible\n");
-				return 0;
-			}
-			if (!ksu_access_ok((void __user*)arg5, sizeof(error))) {
-				pr_err("susfs: CMD_SUSFS_SHOW_VERSION -> arg5 is not accessible\n");
-				return 0;
-			}
-			error = copy_to_user((void __user*)arg3, (void*)susfs_version, len_of_susfs_version+1);
-			pr_info("susfs: CMD_SUSFS_SHOW_VERSION -> ret: %d\n", error);
-			if (copy_to_user((void __user*)arg5, &error, sizeof(error)))
-				pr_info("susfs: copy_to_user() failed\n");
-			return 0;
-		}
-		if (arg2 == CMD_SUSFS_SHOW_ENABLED_FEATURES) {
-			int error = 0;
-			u64 enabled_features = 0;
-			if (!ksu_access_ok((void __user*)arg3, sizeof(u64))) {
-				pr_err("susfs: CMD_SUSFS_SHOW_ENABLED_FEATURES -> arg3 is not accessible\n");
-				return 0;
-			}
-			if (!ksu_access_ok((void __user*)arg5, sizeof(error))) {
-				pr_err("susfs: CMD_SUSFS_SHOW_ENABLED_FEATURES -> arg5 is not accessible\n");
-				return 0;
-			}
-#ifdef CONFIG_KSU_SUSFS_SUS_PATH
-			enabled_features |= (1 << 0);
-#endif
-#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-			enabled_features |= (1 << 1);
-#endif
-#ifdef CONFIG_KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT
-			enabled_features |= (1 << 2);
-#endif
-#ifdef CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT
-			enabled_features |= (1 << 3);
-#endif
-#ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
-			enabled_features |= (1 << 4);
-#endif
-#ifdef CONFIG_KSU_SUSFS_SUS_OVERLAYFS
-			enabled_features |= (1 << 5);
-#endif
-#ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
-			enabled_features |= (1 << 6);
-#endif
-#ifdef CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT
-			enabled_features |= (1 << 7);
-#endif
-#ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME
-			enabled_features |= (1 << 8);
-#endif
-#ifdef CONFIG_KSU_SUSFS_ENABLE_LOG
-			enabled_features |= (1 << 9);
-#endif
-#ifdef CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS
-			enabled_features |= (1 << 10);
-#endif
-#ifdef CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
-			enabled_features |= (1 << 11);
-#endif
-#ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
-			enabled_features |= (1 << 12);
-#endif
-#ifdef CONFIG_KSU_SUSFS_SUS_SU
-			enabled_features |= (1 << 13);
-#endif
-#ifdef CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT
-			enabled_features |= (1 << 14);
-#endif
-			error = copy_to_user((void __user*)arg3, (void*)&enabled_features, sizeof(enabled_features));
-			pr_info("susfs: CMD_SUSFS_SHOW_ENABLED_FEATURES -> ret: %d\n", error);
-			if (copy_to_user((void __user*)arg5, &error, sizeof(error)))
-				pr_info("susfs: copy_to_user() failed\n");
-			return 0;
-		}
-		if (arg2 == CMD_SUSFS_SHOW_VARIANT) {
-			int error = 0;
-			int len_of_variant = strlen(SUSFS_VARIANT);
-			char *susfs_variant = SUSFS_VARIANT;
-			if (!ksu_access_ok((void __user*)arg3, len_of_variant+1)) {
-				pr_err("susfs: CMD_SUSFS_SHOW_VARIANT -> arg3 is not accessible\n");
-				return 0;
-			}
-			if (!ksu_access_ok((void __user*)arg5, sizeof(error))) {
-				pr_err("susfs: CMD_SUSFS_SHOW_VARIANT -> arg5 is not accessible\n");
-				return 0;
-			}
-			error = copy_to_user((void __user*)arg3, (void*)susfs_variant, len_of_variant+1);
-			pr_info("susfs: CMD_SUSFS_SHOW_VARIANT -> ret: %d\n", error);
-			if (copy_to_user((void __user*)arg5, &error, sizeof(error)))
-				pr_info("susfs: copy_to_user() failed\n");
-			return 0;
-		}
-#ifdef CONFIG_KSU_SUSFS_SUS_SU
-		if (arg2 == CMD_SUSFS_IS_SUS_SU_READY) {
-			int error = 0;
-			if (!ksu_access_ok((void __user*)arg3, sizeof(susfs_is_sus_su_ready))) {
-				pr_err("susfs: CMD_SUSFS_IS_SUS_SU_READY -> arg3 is not accessible\n");
-				return 0;
-			}
-			if (!ksu_access_ok((void __user*)arg5, sizeof(error))) {
-				pr_err("susfs: CMD_SUSFS_IS_SUS_SU_READY -> arg5 is not accessible\n");
-				return 0;
-			}
-			error = copy_to_user((void __user*)arg3, (void*)&susfs_is_sus_su_ready, sizeof(susfs_is_sus_su_ready));
-			pr_info("susfs: CMD_SUSFS_IS_SUS_SU_READY -> ret: %d\n", error);
-			if (copy_to_user((void __user*)arg5, &error, sizeof(error)))
-				pr_info("susfs: copy_to_user() failed\n");
-			return 0;
-		}
-		if (arg2 == CMD_SUSFS_SHOW_SUS_SU_WORKING_MODE) {
-			int error = 0;
-			int working_mode = susfs_get_sus_su_working_mode();
-			if (!ksu_access_ok((void __user*)arg3, sizeof(working_mode))) {
-				pr_err("susfs: CMD_SUSFS_SHOW_SUS_SU_WORKING_MODE -> arg3 is not accessible\n");
-				return 0;
-			}
-			if (!ksu_access_ok((void __user*)arg5, sizeof(error))) {
-				pr_err("susfs: CMD_SUSFS_SHOW_SUS_SU_WORKING_MODE -> arg5 is not accessible\n");
-				return 0;
-			}
-			error = copy_to_user((void __user*)arg3, (void*)&working_mode, sizeof(working_mode));
-			pr_info("susfs: CMD_SUSFS_SHOW_SUS_SU_WORKING_MODE -> ret: %d\n", error);
-			if (copy_to_user((void __user*)arg5, &error, sizeof(error)))
-				pr_info("susfs: copy_to_user() failed\n");
-			return 0;
-		}
-#endif // #ifdef CONFIG_KSU_SUSFS_SUS_SU
 	}
 #endif //#ifdef CONFIG_KSU_SUSFS
 

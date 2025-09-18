@@ -40,6 +40,9 @@ static int susfs_update_sus_path_inode(char *target_pathname) {
 	struct inode *inode = NULL;
 	const char *dev_type;
 
+	if (!e404_data.susfs)
+		return -EPERM;
+
 	if (kern_path(target_pathname, LOOKUP_FOLLOW, &p)) {
 		SUSFS_LOGE("Failed opening file '%s'\n", target_pathname);
 		return 1;
@@ -85,6 +88,9 @@ int susfs_add_sus_path(struct st_susfs_sus_path* __user user_info) {
 	int bkt;
 	bool update_hlist = false;
 
+	if (!e404_data.susfs)
+		return -EPERM;
+
 	if (copy_from_user(&info, user_info, sizeof(info))) {
 		SUSFS_LOGE("failed copying from userspace\n");
 		return 1;
@@ -129,6 +135,9 @@ int susfs_add_sus_path(struct st_susfs_sus_path* __user user_info) {
 int susfs_sus_ino_for_filldir64(unsigned long ino) {
 	struct st_susfs_sus_path_hlist *entry;
 
+	if (!e404_data.susfs)
+		return -EPERM;
+
 	hash_for_each_possible(SUS_PATH_HLIST, entry, node, ino) {
 		if (entry->target_ino == ino)
 			return 1;
@@ -145,6 +154,9 @@ static void susfs_update_sus_mount_inode(char *target_pathname) {
 	struct path p;
 	struct inode *inode = NULL;
 	int err = 0;
+
+	if (!e404_data.susfs)
+		return;
 
 	err = kern_path(target_pathname, LOOKUP_FOLLOW, &p);
 	if (err) {
@@ -183,6 +195,9 @@ int susfs_add_sus_mount(struct st_susfs_sus_mount* __user user_info) {
 	struct st_susfs_sus_mount_list *cursor = NULL, *temp = NULL;
 	struct st_susfs_sus_mount_list *new_list = NULL;
 	struct st_susfs_sus_mount info;
+
+	if (!e404_data.susfs)
+		return -EPERM;
 
 	if (copy_from_user(&info, user_info, sizeof(info))) {
 		SUSFS_LOGE("failed copying from userspace\n");
@@ -234,6 +249,9 @@ int susfs_auto_add_sus_bind_mount(const char *pathname, struct path *path_target
 	struct mount *mnt;
 	struct inode *inode;
 
+	if (!e404_data.susfs)
+		return -EPERM;
+
 	mnt = real_mount(path_target->mnt);
 	if (mnt->mnt_group_id > 0 && // 0 means no peer group
 		mnt->mnt_group_id < DEFAULT_SUS_MNT_GROUP_ID) {
@@ -258,6 +276,9 @@ void susfs_auto_add_sus_ksu_default_mount(const char __user *to_pathname) {
 	char *pathname = NULL;
 	struct path path;
 	struct inode *inode;
+
+	if (!e404_data.susfs)
+		return;
 
 	pathname = kmalloc(SUSFS_MAX_LEN_PATHNAME, GFP_KERNEL);
 	if (!pathname) {
@@ -309,6 +330,9 @@ static int susfs_update_sus_kstat_inode(char *target_pathname) {
 	struct inode *inode = NULL;
 	int err = 0;
 
+	if (!e404_data.susfs)
+		return -EPERM;
+
 	err = kern_path(target_pathname, LOOKUP_FOLLOW, &p);
 	if (err) {
 		SUSFS_LOGE("Failed opening file '%s'\n", target_pathname);
@@ -345,6 +369,9 @@ int susfs_add_sus_kstat(struct st_susfs_sus_kstat* __user user_info) {
 	struct hlist_node *tmp_node;
 	int bkt;
 	bool update_hlist = false;
+
+	if (!e404_data.susfs)
+		return -EPERM;
 
 	if (copy_from_user(&info, user_info, sizeof(info))) {
 		SUSFS_LOGE("failed copying from userspace\n");
@@ -441,6 +468,9 @@ int susfs_update_sus_kstat(struct st_susfs_sus_kstat* __user user_info) {
 	int bkt;
 	int err = 0;
 
+	if (!e404_data.susfs)
+		return -EPERM;
+
 	if (copy_from_user(&info, user_info, sizeof(info))) {
 		SUSFS_LOGE("failed copying from userspace\n");
 		return 1;
@@ -488,6 +518,9 @@ out_spin_unlock:
 void susfs_sus_ino_for_generic_fillattr(unsigned long ino, struct kstat *stat) {
 	struct st_susfs_sus_kstat_hlist *entry;
 
+	if (!e404_data.susfs)
+		return;
+
 	hash_for_each_possible(SUS_KSTAT_HLIST, entry, node, ino) {
 		if (entry->target_ino == ino) {
 			stat->dev = entry->info.spoofed_dev;
@@ -510,6 +543,9 @@ void susfs_sus_ino_for_generic_fillattr(unsigned long ino, struct kstat *stat) {
 void susfs_sus_ino_for_show_map_vma(unsigned long ino, dev_t *out_dev, unsigned long *out_ino) {
 	struct st_susfs_sus_kstat_hlist *entry;
 
+	if (!e404_data.susfs)
+		return;
+
 	hash_for_each_possible(SUS_KSTAT_HLIST, entry, node, ino) {
 		if (entry->target_ino == ino) {
 			*out_dev = entry->info.spoofed_dev;
@@ -527,6 +563,9 @@ int susfs_add_try_umount(struct st_susfs_try_umount* __user user_info) {
 	struct st_susfs_try_umount_list *cursor = NULL, *temp = NULL;
 	struct st_susfs_try_umount_list *new_list = NULL;
 	struct st_susfs_try_umount info;
+
+	if (!e404_data.susfs)
+		return -EPERM;
 
 	if (copy_from_user(&info, user_info, sizeof(info))) {
 		SUSFS_LOGE("failed copying from userspace\n");
@@ -559,6 +598,9 @@ int susfs_add_try_umount(struct st_susfs_try_umount* __user user_info) {
 void susfs_try_umount(uid_t target_uid) {
 	struct st_susfs_try_umount_list *cursor = NULL;
 
+	if (!e404_data.susfs)
+		return;
+
 	// We should umount in reversed order
 	list_for_each_entry_reverse(cursor, &LH_TRY_UMOUNT_PATH, list) {
 		if (cursor->info.mnt_mode == TRY_UMOUNT_DEFAULT) {
@@ -580,6 +622,9 @@ void susfs_auto_add_try_umount_for_bind_mount(struct path *path) {
 #ifdef CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT
 	bool is_magic_mount_path = false;
 #endif
+
+	if (!e404_data.susfs)
+		return;
 
 #ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
 	if (path->dentry->d_inode->i_state & INODE_STATE_SUS_KSTAT) {
@@ -656,11 +701,17 @@ out_free_pathname:
 static spinlock_t susfs_uname_spin_lock;
 static struct st_susfs_uname my_uname;
 static void susfs_my_uname_init(void) {
+	if (!e404_data.susfs)
+		return;
+
 	memset(&my_uname, 0, sizeof(my_uname));
 }
 
 int susfs_set_uname(struct st_susfs_uname* __user user_info) {
 	struct st_susfs_uname info;
+
+	if (!e404_data.susfs)
+		return -EPERM;
 
 	if (copy_from_user(&info, user_info, sizeof(struct st_susfs_uname))) {
 		SUSFS_LOGE("failed copying from userspace.\n");
@@ -685,6 +736,9 @@ int susfs_set_uname(struct st_susfs_uname* __user user_info) {
 }
 
 void susfs_spoof_uname(struct new_utsname* tmp) {
+	if (!e404_data.susfs)
+		return;
+
 	if (unlikely(my_uname.release[0] == '\0' || spin_is_locked(&susfs_uname_spin_lock)))
 		return;
 	strncpy(tmp->release, my_uname.release, __NEW_UTS_LEN);
@@ -711,6 +765,9 @@ void susfs_set_log(bool enabled) {
 static char *fake_cmdline_or_bootconfig = NULL;
 int susfs_set_cmdline_or_bootconfig(char* __user user_fake_cmdline_or_bootconfig) {
 	int res;
+
+	if (!e404_data.susfs)
+		return -EPERM;
 
 	if (!fake_cmdline_or_bootconfig) {
 		// 4096 is enough I guess
@@ -739,6 +796,9 @@ int susfs_set_cmdline_or_bootconfig(char* __user user_fake_cmdline_or_bootconfig
 }
 
 int susfs_spoof_cmdline_or_bootconfig(struct seq_file *m) {
+	if (!e404_data.susfs)
+		return -EPERM;
+
 	if (fake_cmdline_or_bootconfig != NULL) {
 		seq_puts(m, fake_cmdline_or_bootconfig);
 		return 0;
@@ -754,6 +814,8 @@ static int susfs_update_open_redirect_inode(struct st_susfs_open_redirect_hlist 
 	struct path path_target;
 	struct inode *inode_target;
 	int err = 0;
+	if (!e404_data.susfs)
+		return -EPERM;
 
 	err = kern_path(new_entry->target_pathname, LOOKUP_FOLLOW, &path_target);
 	if (err) {
@@ -783,6 +845,9 @@ int susfs_add_open_redirect(struct st_susfs_open_redirect* __user user_info) {
 	struct hlist_node *tmp_node;
 	int bkt;
 	bool update_hlist = false;
+
+	if (!e404_data.susfs)
+		return -EPERM;
 
 	if (copy_from_user(&info, user_info, sizeof(info))) {
 		SUSFS_LOGE("failed copying from userspace\n");
@@ -856,6 +921,9 @@ int susfs_sus_su(struct st_sus_su* __user user_info) {
 	struct st_sus_su info;
 	int last_working_mode = susfs_sus_su_working_mode;
 
+	if (!e404_data.susfs)
+		return -EPERM;
+
 	if (copy_from_user(&info, user_info, sizeof(struct st_sus_su))) {
 		SUSFS_LOGE("failed copying from userspace\n");
 		return 1;
@@ -903,6 +971,11 @@ out:
 
 /* susfs_init */
 void susfs_init(void) {
+	if (!e404_data.susfs) {
+		pr_alert("E404: Soft-disabled SUSFS\n");
+		return;
+	}
+
 	spin_lock_init(&susfs_spin_lock);
 #ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME
 	spin_lock_init(&susfs_uname_spin_lock);
