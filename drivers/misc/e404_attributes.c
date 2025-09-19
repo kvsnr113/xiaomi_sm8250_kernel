@@ -31,9 +31,7 @@ int early_effcpu = 1;
 int early_effcpu = 0;
 #endif
 
-#ifdef CONFIG_E404_OPLUS
-int early_rom_type = 3;
-#elif defined(CONFIG_E404_MIUI)
+#ifdef CONFIG_E404_MIUI
 int early_rom_type = 2;
 #else
 int early_rom_type = 1;
