@@ -45,43 +45,24 @@ case "$*" in
         ;;
 esac
 
-case "$*" in
-    *munch*)
-        sed -i '/devicename=/c\devicename=munch;' "$AK3_DIR/anykernel.sh"
-        TARGET="MUNCH"
-        DEFCONFIG="vendor/munch_defconfig"
-        ;;
-    *alioth*)
-        sed -i '/devicename=/c\devicename=alioth;' "$AK3_DIR/anykernel.sh"
-        TARGET="ALIOTH"
-        DEFCONFIG="vendor/alioth_defconfig"
-        ;;
-    *apollo*)
-        sed -i '/devicename=/c\devicename=apollo;' "$AK3_DIR/anykernel.sh"
-        TARGET="APOLLO"
-        DEFCONFIG="vendor/apollo_defconfig"
-        ;;
-    *lmi*)
-        sed -i '/devicename=/c\devicename=lmi;' "$AK3_DIR/anykernel.sh"
-        TARGET="LMI"
-        DEFCONFIG="vendor/lmi_defconfig"
-        ;;
-    *umi*)
-        sed -i '/devicename=/c\devicename=umi;' "$AK3_DIR/anykernel.sh"
-        TARGET="UMI"
-        DEFCONFIG="vendor/umi_defconfig"
-        ;;
-    *cmi*)
-        sed -i '/devicename=/c\devicename=cmi;' "$AK3_DIR/anykernel.sh"
-        TARGET="CMI"
-        DEFCONFIG="vendor/cmi_defconfig"
-        ;;
-    *cas*)
-        sed -i '/devicename=/c\devicename=cas;' "$AK3_DIR/anykernel.sh"
-        TARGET="CAS"
-        DEFCONFIG="vendor/cas_defconfig"
-        ;;
-esac
+# Device selection using arrays
+declare -A DEVICE_MAP=(
+    ["munch"]="MUNCH:vendor/munch_defconfig"
+    ["alioth"]="ALIOTH:vendor/alioth_defconfig"
+    ["apollo"]="APOLLO:vendor/apollo_defconfig"
+    ["lmi"]="LMI:vendor/lmi_defconfig"
+    ["umi"]="UMI:vendor/umi_defconfig"
+    ["cmi"]="CMI:vendor/cmi_defconfig"
+    ["cas"]="CAS:vendor/cas_defconfig"
+)
+
+for device in "${!DEVICE_MAP[@]}"; do
+    if [[ "$*" == *"$device"* ]]; then
+        IFS=':' read -r TARGET DEFCONFIG <<< "${DEVICE_MAP[$device]}"
+        sed -i "/devicename=/c\devicename=${device};" "$AK3_DIR/anykernel.sh"
+        break
+    fi
+done
 
 # Set kernel image paths
 K_IMG="$KERNEL_DIR/out/arch/arm64/boot/Image"
@@ -113,28 +94,28 @@ rm -rf ../*E404R*.zip
 
 # Function definitions
 build_msg() {
-    send_msg "
+    local BRANCH=$(git rev-parse --abbrev-ref HEAD)
+    local COMMIT=$(git log -1 --pretty=format:'%s')
+    local MSG=$(cat <<EOF
 <b>Build Triggered !</b>
-<b>Machine :</b>
-<b>•</b> <code>$(lscpu | sed -nr '/Model name/ s/.*:\s*(.*) */\1/p')</code>
-<b>•</b> RAM <code>$(cat /proc/meminfo | numfmt --field 2 --from-unit=Ki --to-unit=Mi | sed 's/ kB/M/g' | grep 'MemTotal' | awk -F ':' '{print $2}' | tr -d ' ')</code> | Free <code>$(cat /proc/meminfo | numfmt --field 2 --from-unit=Ki --to-unit=Mi | sed 's/ kB/M/g' | grep 'MemFree' | awk -F ':' '{print $2}' | tr -d ' ')</code> | Swap <code>$(cat /proc/meminfo | numfmt --field 2 --from-unit=Ki --to-unit=Mi | sed 's/ kB/M/g' | grep 'SwapTotal' | awk -F ':' '{print $2}' | tr -d ' ')</code>
-<b>==================================</b>
-<b>Device : </b><code>$TARGET</code>
-<b>Branch : </b><code>$(git rev-parse --abbrev-ref HEAD)</code>
-<b>Commit : </b><code>$(git log --pretty=format:'%s' -1)</code>
-<b>TC     : </b><code>$TC</code>
-<b>==================================</b>"
+<code>Device : $TARGET</code>
+<code>Branch : $BRANCH</code>
+<code>ToolCh : $TC</code>
+<b>Commit :</b>
+<code>$COMMIT</code>
+EOF
+)
+    send_msg "$MSG"
 }
 
 success_msg() {
-    send_msg "
+    local MSG=$(cat <<EOF
 <b>Build Success !</b>
-<b>==================================</b>
-<b>Build Date : </b>
-<code>$(date +"%A, %d %b %Y, %H:%M:%S")</code>
-<b>Build Took : </b>
-<code>$(($TOTAL_TIME / 60)) Minutes, $(($TOTAL_TIME % 60)) Second</code>
-<b>==================================</b>"
+<code>Date : $(date +"%d %b %Y, %H:%M:%S")</code>
+<code>Time : $(($TOTAL_TIME / 60))m $(($TOTAL_TIME % 60))s</code>
+EOF
+)
+    send_msg "$MSG"
 }
 
 send_msg() {
@@ -157,8 +138,7 @@ send_file() {
 }
 
 clearbuild() {
-    rm -rf "$K_IMG" "$K_DTB" "$K_DTBO"
-    rm -rf out/arch/arm64/boot/dts/vendor/qcom
+    rm -rf "$K_IMG" "$K_DTB" "$K_DTBO" "$KERNEL_DIR/out/log.txt"
 }
 
 zipbuild() {
@@ -170,6 +150,7 @@ zipbuild() {
 }
 
 uploadbuild() {
+    send_file "$KERNEL_DIR/out/log.txt"
     send_file "$BASE_DIR/$ZIP_NAME" ""
     send_msg "<b>Kernel Flashable Zip Uploaded</b>"
 }
@@ -193,17 +174,8 @@ setup_build_flags() {
         
         # Export for defconfig (without ccache)
         export CC="clang"
-        export LD="ld.lld"
-        export AR="llvm-ar"
-        export NM="llvm-nm"
-        export OBJCOPY="llvm-objcopy"
-        export OBJDUMP="llvm-objdump"
-        export STRIP="llvm-strip"
         export LLVM=1
         export LLVM_IAS=1
-        export CROSS_COMPILE="aarch64-linux-gnu-"
-        export CROSS_COMPILE_ARM32="arm-linux-gnueabi-"
-        export CROSS_COMPILE_COMPAT="arm-linux-gnueabi-"
         
     else
         BUILD_FLAGS=(
@@ -220,22 +192,7 @@ setup_build_flags() {
         
         # Export for defconfig (without ccache)
         export CC="aarch64-elf-gcc"
-        export LD="aarch64-elf-ld.lld"
-        export AR="llvm-ar"
-        export NM="llvm-nm"
-        export OBJCOPY="llvm-objcopy"
-        export OBJDUMP="llvm-objdump"
-        export STRIP="llvm-strip"
-        export CROSS_COMPILE="aarch64-elf-"
-        export CROSS_COMPILE_COMPAT="arm-eabi-"
     fi
-
-    echo "=== Build Flags ==="
-    printf '%s\n' "${BUILD_FLAGS[@]}"
-    echo "CC: $(which clang)"
-    echo "CCache: $(which ccache)"
-    ccache -s
-    echo "==================="
 }
 
 setup_build_flags
@@ -246,6 +203,8 @@ compilebuild() {
     ccache -s
     echo "================================"
     
+    mkdir -p $KERNEL_DIR/out
+
     local make_flags=(-kj16 O=out "${BUILD_FLAGS[@]}")
     
     if [[ $TC == *Clang* ]]; then
@@ -263,7 +222,7 @@ compilebuild() {
     
     if [[ ! -e $K_IMG ]]; then
         echo -e "(X) Kernel Build Error !"
-        send_file "out/log.txt"
+        send_file "$KERNEL_DIR/out/log.txt"
         git restore "arch/arm64/configs/$DEFCONFIG"
         send_msg "<b>! Kernel Build Error !</b>"
         exit 1
@@ -305,15 +264,7 @@ while true; do
             sed -i '/CONFIG_E404_OPLUS/c\CONFIG_E404_OPLUS=y' out/.config
             
             # LTO configuration
-            if [[ "$TC" != *GCC* ]]; then
-                if [[ "$TYPE" == "FLTO" ]]; then
-                    sed -i '/CONFIG_LTO_CLANG_THIN/c\CONFIG_LTO_CLANG_THIN=n' out/.config
-                    sed -i '/CONFIG_LTO_CLANG_FULL/c\CONFIG_LTO_CLANG_FULL=y' out/.config
-                else 
-                    sed -i '/CONFIG_LTO_CLANG_THIN/c\CONFIG_LTO_CLANG_THIN=y' out/.config
-                    sed -i '/CONFIG_LTO_CLANG_FULL/c\CONFIG_LTO_CLANG_FULL=n' out/.config
-                fi
-            else
+            if [[ "$TC" == *GCC* ]]; then
                 sed -i '/CONFIG_LTO_NONE/c\CONFIG_LTO_NONE=y' out/.config
                 sed -i '/CONFIG_LTO=/c\CONFIG_LTO=n' out/.config
                 sed -i '/CONFIG_LTO_CLANG=/c\# CONFIG_LTO_CLANG is not set' out/.config
@@ -322,16 +273,13 @@ while true; do
             fi
 
             build_msg
-            clearbuild
             makebuild
             zipbuild
-            clearbuild
 
             TOTAL_TIME=$(("$(date +"%s")" - "$START"))
             success_msg
-            send_file "out/log.txt" "<b>CI Log Uploaded</b>"
-            rm -rf out/log.txt
             uploadbuild
+            clearbuild
             ;;
         3)
             echo -e "(OK) Sending to Telegram"
