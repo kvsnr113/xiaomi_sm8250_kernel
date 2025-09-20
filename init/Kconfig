@@ -100,11 +100,6 @@ config E404_EFFCPU_DEFAULT
 	depends on E404_SIGNATURE
 	default n
 
-config E404_IR_LOS_DEFAULT
-	bool "E404 IR LOS as default"
-	depends on E404_SIGNATURE
-	default n
-
 config E404_ALIOTH_5K_BATT_DEFAULT
 	bool "E404 ALIOTH 5K BATT as default"
 	depends on E404_SIGNATURE
