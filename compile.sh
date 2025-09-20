@@ -174,41 +174,93 @@ uploadbuild() {
     send_msg "<b>Kernel Flashable Zip Uploaded</b>"
 }
 
-setup_toolchain() {
-    case "$TC" in
-        *Clang*)
-            export CC="ccache clang"
-            export CROSS_COMPILE="aarch64-linux-gnu-"
-            export CROSS_COMPILE_ARM32="arm-linux-gnueabi-"
-            export CROSS_COMPILE_COMPAT="arm-linux-gnueabi-"
-            export LD="ld.lld"
-            export AR="llvm-ar"
-            export NM="llvm-nm"
-            export OBJCOPY="llvm-objcopy"
-            export OBJDUMP="llvm-objdump"
-            export STRIP="llvm-strip"
-            export LLVM=1
-            export LLVM_IAS=1
-            ;;
-        *GCC*)
-            export CROSS_COMPILE="aarch64-elf-"
-            export CROSS_COMPILE_COMPAT="arm-eabi-"
-            ;;
-    esac
+setup_build_flags() {
+    if [[ $TC == *Clang* ]]; then
+        BUILD_FLAGS=(
+            CC="ccache clang"
+            LD="ld.lld"
+            AR="llvm-ar"
+            NM="llvm-nm"
+            OBJCOPY="llvm-objcopy"
+            OBJDUMP="llvm-objdump"
+            STRIP="llvm-strip"
+            LLVM=1
+            LLVM_IAS=1
+            CROSS_COMPILE="aarch64-linux-gnu-"
+            CROSS_COMPILE_ARM32="arm-linux-gnueabi-"
+            CROSS_COMPILE_COMPAT="arm-linux-gnueabi-"
+        )
+        
+        # Export for defconfig (without ccache)
+        export CC="clang"
+        export LD="ld.lld"
+        export AR="llvm-ar"
+        export NM="llvm-nm"
+        export OBJCOPY="llvm-objcopy"
+        export OBJDUMP="llvm-objdump"
+        export STRIP="llvm-strip"
+        export LLVM=1
+        export LLVM_IAS=1
+        export CROSS_COMPILE="aarch64-linux-gnu-"
+        export CROSS_COMPILE_ARM32="arm-linux-gnueabi-"
+        export CROSS_COMPILE_COMPAT="arm-linux-gnueabi-"
+        
+    else
+        BUILD_FLAGS=(
+            CC="ccache aarch64-elf-gcc"
+            LD="aarch64-elf-ld.lld"
+            AR="llvm-ar"
+            NM="llvm-nm"
+            OBJCOPY="llvm-objcopy"
+            OBJDUMP="llvm-objdump"
+            STRIP="llvm-strip"
+            CROSS_COMPILE="aarch64-elf-"
+            CROSS_COMPILE_COMPAT="arm-eabi-"
+        )
+        
+        # Export for defconfig (without ccache)
+        export CC="aarch64-elf-gcc"
+        export LD="aarch64-elf-ld.lld"
+        export AR="llvm-ar"
+        export NM="llvm-nm"
+        export OBJCOPY="llvm-objcopy"
+        export OBJDUMP="llvm-objdump"
+        export STRIP="llvm-strip"
+        export CROSS_COMPILE="aarch64-elf-"
+        export CROSS_COMPILE_COMPAT="arm-eabi-"
+    fi
+
+    echo "=== Build Flags ==="
+    printf '%s\n' "${BUILD_FLAGS[@]}"
+    echo "CC: $(which clang)"
+    echo "CCache: $(which ccache)"
+    ccache -s
+    echo "==================="
 }
 
+setup_build_flags
+
 compilebuild() {
-    setup_toolchain
+    # Show ccache configuration before build
+    echo "=== CCache Stats Before Build ==="
+    ccache -s
+    echo "================================"
     
-    local make_flags=(-kj$(nproc --all) O=out)
+    local make_flags=(-kj16 O=out "${BUILD_FLAGS[@]}")
     
     if [[ $TC == *Clang* ]]; then
+        echo "Compiling with Clang (using ccache)"
         make "${make_flags[@]}" 2>&1 | tee -a out/log.txt
     else
         echo "Compiling with GCC"
         make "${make_flags[@]}" 2>&1 | tee -a out/log.txt
     fi
 
+    # Show ccache stats after build
+    echo "=== CCache Stats After Build ==="
+    ccache -s
+    echo "==============================="
+    
     if [[ ! -e $K_IMG ]]; then
         echo -e "(X) Kernel Build Error !"
         send_file "out/log.txt"
