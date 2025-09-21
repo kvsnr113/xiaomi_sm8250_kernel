@@ -375,6 +375,38 @@
 		#size-cells = <2>;
 		ranges;
 
+		/* reserve qcom shits to prevent corruption */
+		tzlog_region: tzlog@146bf720 {
+			reg = <0x0 0x146bf720 0x0 0x3000>;
+			no-map;
+		};
+
+		/* main shared block for rpm and ddr stats */
+		rpm_ddr_stats_region: rpm-ddr-stats@c300000 {
+			reg = <0x0 0x0c300000 0x0 0x1000>;
+			no-map;
+		};
+
+		/* rpm stats control register */
+		rpm_stats_reg_region: rpm-stats-reg@c3f0004 {
+			reg = <0x0 0x0c3f0004 0x0 0x4>;
+			no-map;
+		};
+
+		/* ddr stats control register */
+		ddr_stats_reg_region: ddr-stats-reg@c3f001c {
+			reg = <0x0 0x0c3f001c 0x0 0x4>;
+			no-map;
+		};
+
+		/* rpmh master stats */
+		rpmh_master_stats_region: rpmh-master-stats@b221200 {
+			reg = <0x0 0x0b221200 0x0 0x60>;
+			no-map;
+		};
+
+		/* end */
+
 		hyp_mem: hyp_region@80000000 {
 			no-map;
 			reg = <0x0 0x80000000 0x0 0x600000>;
