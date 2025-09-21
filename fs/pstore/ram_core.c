@@ -38,7 +38,9 @@ struct persistent_ram_buffer {
 
 #define PERSISTENT_RAM_SIG (0x43474244) /* DBGC */
 
+#ifdef CONFIG_PSTORE_PMSG
 struct pmsg_start_t pmsg_start;
+#endif
 static inline size_t buffer_size(struct persistent_ram_zone *prz)
 {
 	return atomic_read(&prz->buffer->size);
@@ -359,9 +361,11 @@ int notrace persistent_ram_write_user(struct persistent_ram_zone *prz,
 
 	start = buffer_start_add(prz, c);
 
+#ifdef CONFIG_PSTORE_PMSG
 	spin_lock(&pmsg_start.lock);
 	pmsg_start.start = start;
 	spin_unlock(&pmsg_start.lock);
+#endif
 
 	rem = prz->buffer_size - start;
 	if (unlikely(rem < c)) {
