@@ -20,7 +20,7 @@ DEFCONFIG=""
 case "$*" in
     *st*)
         git checkout main
-        TYPE="ST" ;;
+        TYPE="STABLE" ;;
     *dev*) TYPE="DEV" ;;
     *sus*) 
         git checkout main-susfs
@@ -138,7 +138,7 @@ send_file() {
 }
 
 clearbuild() {
-    rm -rf "$K_IMG" "$K_DTB" "$K_DTBO" "$KERNEL_DIR/out/log.txt"
+    rm -rf "$K_IMG" "$K_DTB" "$K_DTBO" "$KERNEL_DIR/out/log.txt" "$KERNEL_DIR/out/arch/arm64/boot/dts/vendor/qcom"
 }
 
 zipbuild() {
