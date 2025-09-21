@@ -124,6 +124,7 @@ struct kgsl_iommu {
 	atomic_t clk_enable_count;
 	struct clk *clks[KGSL_IOMMU_MAX_CLKS];
 	struct kgsl_memdesc smmu_info;
+	struct regulator *vddcx_regulator;
 };
 
 /*
