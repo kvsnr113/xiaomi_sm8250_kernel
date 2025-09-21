@@ -12,6 +12,7 @@
 #include <linux/random.h>
 #include <soc/qcom/scm.h>
 #include <soc/qcom/secure_buffer.h>
+#include <linux/regulator/consumer.h>
 
 #include "adreno.h"
 #include "kgsl_device.h"
