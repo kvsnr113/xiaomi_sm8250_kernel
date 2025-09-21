@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
- * Copyright (C) 2021 XiaoMi, Inc.
  */
 
 #define pr_fmt(fmt) "%s " fmt, KBUILD_MODNAME
@@ -22,7 +21,6 @@
 
 #include <soc/qcom/cmd-db.h>
 #include <soc/qcom/tcs.h>
-
 #include <dt-bindings/soc/qcom,rpmh-rsc.h>
 
 #include "rpmh-internal.h"
@@ -73,18 +71,6 @@
 
 #define ACCL_TYPE(addr)			((addr >> 16) & 0xF)
 #define NR_ACCL_TYPES			3
-
-#define rpmh_spin_lock(lock)				\
-do {	\
-	if (!oops_in_progress)\
-		spin_lock(lock);	\
-} while (0)
-
-#define rpmh_spin_unlock(lock)				\
-do {	\
-	if (!oops_in_progress)\
-		spin_unlock(lock);	\
-} while (0)
 
 static const char * const accl_str[] = {
 	"", "", "", "CLK", "VREG", "BUS",
@@ -141,7 +127,7 @@ static int tcs_invalidate(struct rsc_drv *drv, int type)
 
 	tcs = get_tcs_of_type(drv, type);
 
-	rpmh_spin_lock(&drv->lock);
+	spin_lock(&drv->lock);
 	if (bitmap_empty(tcs->slots, MAX_TCS_SLOTS))
 		goto done;
 
@@ -156,7 +142,7 @@ static int tcs_invalidate(struct rsc_drv *drv, int type)
 	bitmap_zero(tcs->slots, MAX_TCS_SLOTS);
 
 done:
-	rpmh_spin_unlock(&drv->lock);
+	spin_unlock(&drv->lock);
 	return ret;
 }
 
@@ -420,8 +406,7 @@ static int tcs_write(struct rsc_drv *drv, const struct tcs_request *msg)
 	if (IS_ERR(tcs))
 		return PTR_ERR(tcs);
 
-	rpmh_spin_lock(&drv->lock);
-
+	spin_lock(&drv->lock);
 	if (msg->state == RPMH_ACTIVE_ONLY_STATE && drv->in_solver_mode) {
 		ret = -EINVAL;
 		goto done_write;
@@ -450,7 +435,7 @@ static int tcs_write(struct rsc_drv *drv, const struct tcs_request *msg)
 	__tcs_trigger(drv, tcs_id, true);
 
 done_write:
-	rpmh_spin_unlock(&drv->lock);
+	spin_unlock(&drv->lock);
 	return ret;
 }
 
@@ -464,11 +449,9 @@ done_write:
  * Return: 0 on success, -EINVAL on error.
  * Note: This call blocks until a valid data is written to the TCS.
  */
- extern int in_long_press;
 int rpmh_rsc_send_data(struct rsc_drv *drv, const struct tcs_request *msg)
 {
 	int ret;
-	int count = 0;
 
 	if (!msg || !msg->cmds || !msg->num_cmds ||
 	    msg->num_cmds > MAX_RPMH_PAYLOAD) {
@@ -484,12 +467,7 @@ int rpmh_rsc_send_data(struct rsc_drv *drv, const struct tcs_request *msg)
 					    drv->name, msg->cmds[0].addr);
 #endif /* QCOM_RPMH_DEBUG */
 			udelay(10);
-			count++;
 		}
-		if (count == 50000) {
-			break;
-		}
-
 	} while (ret == -EBUSY);
 
 	return ret;
@@ -563,12 +541,12 @@ static int tcs_ctrl_write(struct rsc_drv *drv, const struct tcs_request *msg)
 	if (IS_ERR(tcs))
 		return PTR_ERR(tcs);
 
-	rpmh_spin_lock(&drv->lock);
+	spin_lock(&drv->lock);
 	/* find the TCS id and the command in the TCS to write to */
 	ret = find_slots(tcs, msg, &tcs_id, &cmd_id);
 	if (!ret)
 		__tcs_buffer_write(drv, tcs_id, cmd_id, msg);
-	rpmh_spin_unlock(&drv->lock);
+	spin_unlock(&drv->lock);
 
 	return ret;
 }

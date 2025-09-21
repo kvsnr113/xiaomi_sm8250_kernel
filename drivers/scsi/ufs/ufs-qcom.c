@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2013-2019, Linux Foundation. All rights reserved.
- * Copyright (C) 2021 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -19,7 +18,6 @@
 #include <linux/phy/phy.h>
 #include <linux/phy/phy-qcom-ufs.h>
 #include <linux/clk/qcom.h>
-#include <linux/bitfield.h>
 
 #ifdef CONFIG_QCOM_BUS_SCALING
 #include <linux/msm-bus.h>
@@ -1295,12 +1293,8 @@ static void ufs_qcom_dev_ref_clk_ctrl(struct ufs_qcom_host *host, bool enable)
 		 */
 		if (enable) {
 			if (host->hba->dev_info.quirks &
-			    UFS_DEVICE_QUIRK_WAIT_AFTER_REF_CLK_UNGATE) {
-				if (!oops_in_progress)
-					usleep_range(50, 60);
-				else
-					udelay(50);
-			}
+			    UFS_DEVICE_QUIRK_WAIT_AFTER_REF_CLK_UNGATE)
+				usleep_range(50, 60);
 			else
 				udelay(1);
 		}
@@ -1499,40 +1493,6 @@ static void ufs_qcom_advertise_quirks(struct ufs_hba *hba)
 	 * to be other issues that will need to be addressed too.
 	 */
 	//hba->quirks |= UFSHCD_QUIRK_BROKEN_CRYPTO;
-}
-
-/*
- * Disable to enter in h8 if state = HIBERN8_EXITED
- * 1.exit h8 mode
- * 2.disable low power mode
- *
- */
-void ufs_enter_h8_disable(struct Scsi_Host *shost)
-{
-	struct ufs_hba *hba;
-	struct ufs_qcom_host *host;
-
-	if (shost == NULL)
-		return;
-
-	hba = shost_priv(shost);
-	host = ufshcd_get_variant(hba);
-
-	printk(KERN_ERR "Long Press :Disable UFS enter in h8 state=%d and hba->caps =%x!", hba->hibern8_on_idle.state, hba->caps);
-
-	if (hba->hibern8_on_idle.state != HIBERN8_EXITED) {
-		return;
-	}
-
-	hba->caps &= ~UFSHCD_CAP_CLK_GATING;
-	hba->caps &= ~UFSHCD_CAP_HIBERN8_WITH_CLK_GATING;
-	hba->caps &= ~UFSHCD_CAP_CLK_SCALING;
-	hba->caps &= ~UFSHCD_CAP_POWER_COLLAPSE_DURING_HIBERN8;
-
-	hba->ahit = FIELD_PREP(UFSHCI_AHIBERN8_TIMER_MASK, 0);
-	__raw_writel(__cpu_to_le32(hba->ahit), hba->mmio_base + REG_AUTO_HIBERNATE_IDLE_TIMER);
-	hba->quirks |= UFSHCD_QUIRK_BROKEN_AUTO_HIBERN8;
-	hba->hibern8_on_idle.state = HIBERN8_EXITED;
 }
 
 static void ufs_qcom_set_caps(struct ufs_hba *hba)
@@ -2223,7 +2183,7 @@ int ufs_qcom_testbus_config(struct ufs_qcom_host *host)
 	if (!host)
 		return -EINVAL;
 	hba = host->hba;
-	ufs_spin_lock_irqsave(hba->host->host_lock, flags);
+	spin_lock_irqsave(hba->host->host_lock, flags);
 	switch (host->testbus.select_major) {
 	case TSTBUS_UAWM:
 		reg = UFS_TEST_BUS_CTRL_0;
@@ -2284,12 +2244,12 @@ int ufs_qcom_testbus_config(struct ufs_qcom_host *host)
 	if (offset < 0) {
 		dev_err(hba->dev, "%s: Bad offset: %d\n", __func__, offset);
 		ret = -EINVAL;
-		ufs_spin_unlock_irqrestore(hba->host->host_lock, flags);
+		spin_unlock_irqrestore(hba->host->host_lock, flags);
 		goto out;
 	}
 	mask <<= offset;
 
-	ufs_spin_unlock_irqrestore(hba->host->host_lock, flags);
+	spin_unlock_irqrestore(hba->host->host_lock, flags);
 	if (reg) {
 		ufshcd_rmwl(host->hba, TEST_BUS_SEL,
 		    (u32)host->testbus.select_major << testbus_sel_offset,
