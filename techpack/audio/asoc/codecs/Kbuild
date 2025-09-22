@@ -249,16 +249,14 @@ ifeq ($(KERNEL_BUILD), 1)
 ifeq ($(CONFIG_BOARD_XIAOMI_SM8250), y)
 ifneq ($(filter y, $(CONFIG_BOARD_ENUMA) $(CONFIG_BOARD_ELISH) $(CONFIG_BOARD_DAGU)),)
 	obj-y	+= cs35l41_k81/
-else
-	obj-y	+= cs35l41/
-endif
-ifeq ($(CONFIG_BOARD_MUNCH), y)
+else ifeq ($(CONFIG_BOARD_PIPA), y)
+	obj-y	+= aw882xx/
+else ifeq ($(CONFIG_BOARD_MUNCH), y)
 	obj-y	+= tfa9874/
+else ifeq ($(CONFIG_BOARD_APOLLO), y)
+	obj-y	+= cs35l41/
 else
 	obj-y	+= tfa98xx/
-endif
-ifeq ($(CONFIG_BOARD_PIPA), y)
-	obj-y	+= aw882xx/
 endif
 endif
 	obj-y	+= rouleur/
