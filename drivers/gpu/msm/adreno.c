@@ -944,33 +944,6 @@ static void adreno_of_get_limits(struct adreno_device *adreno_dev,
 	set_bit(ADRENO_LM_CTRL, &adreno_dev->pwrctrl_flag);
 }
 
-static int adreno_of_get_legacy_pwrlevels(struct adreno_device *adreno_dev,
-		struct device_node *parent)
-{
-	struct device_node *node;
-	int ret;
-
-	node = of_find_node_by_name(parent, "qcom,gpu-pwrlevels");
-
-	if (node == NULL) {
-		dev_err(KGSL_DEVICE(adreno_dev)->dev,
-			"Unable to find 'qcom,gpu-pwrlevels'\n");
-		return -EINVAL;
-	}
-
-	ret = adreno_of_parse_pwrlevels(adreno_dev, node);
-	if (ret)
-		return ret;
-
-	adreno_of_get_initial_pwrlevel(adreno_dev, parent);
-
-	adreno_of_get_limits(adreno_dev, parent);
-
-	adreno_of_get_bimc_iface_clk(adreno_dev, parent);
-
-	return 0;
-}
-
 static int adreno_of_get_pwrlevels(struct adreno_device *adreno_dev,
 		struct device_node *parent)
 {
@@ -978,8 +951,6 @@ static int adreno_of_get_pwrlevels(struct adreno_device *adreno_dev,
 	unsigned int bin = 0;
 
 	node = of_find_node_by_name(parent, "qcom,gpu-pwrlevel-bins");
-	if (node == NULL)
-		return adreno_of_get_legacy_pwrlevels(adreno_dev, parent);
 
 	for_each_child_of_node(node, child) {
 
