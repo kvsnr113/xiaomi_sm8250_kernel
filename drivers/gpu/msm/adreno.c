@@ -948,41 +948,29 @@ static int adreno_of_get_pwrlevels(struct adreno_device *adreno_dev,
 		struct device_node *parent)
 {
 	struct device_node *node, *child;
-	unsigned int bin = 0;
-
 	node = of_find_node_by_name(parent, "qcom,gpu-pwrlevel-bins");
+	if (!node)
+		return -ENODEV;
 
-	for_each_child_of_node(node, child) {
-
-		if (of_property_read_u32(child, "qcom,speed-bin", &bin))
-			continue;
-
-		if (bin == adreno_dev->speed_bin) {
-			int ret;
-
-			ret = adreno_of_parse_pwrlevels(adreno_dev, child);
-			if (ret)
-				return ret;
-
-			adreno_of_get_initial_pwrlevel(adreno_dev, child);
-
-			adreno_of_get_bimc_iface_clk(adreno_dev, child);
-
-			/*
-			 * Check for global throttle-pwrlevel first and override
-			 * with speedbin specific one if found.
-			 */
-			adreno_of_get_limits(adreno_dev, parent);
-			adreno_of_get_limits(adreno_dev, child);
-
-			return 0;
-		}
+	/* Use the first available child, ignore speed-bin */
+	child = of_get_next_available_child(node, NULL);
+	if (!child) {
+		dev_err(KGSL_DEVICE(adreno_dev)->dev,
+			"No child nodes in gpu-pwrlevel-bins\n");
+		return -ENODEV;
 	}
 
-	dev_err(KGSL_DEVICE(adreno_dev)->dev,
-		"GPU speed_bin:%d mismatch for efused bin:%d\n",
-		adreno_dev->speed_bin, bin);
-	return -ENODEV;
+	/* Parse the first available bin */
+	int ret = adreno_of_parse_pwrlevels(adreno_dev, child);
+	if (ret)
+		return ret;
+
+	adreno_of_get_initial_pwrlevel(adreno_dev, child);
+	adreno_of_get_bimc_iface_clk(adreno_dev, child);
+	adreno_of_get_limits(adreno_dev, parent);
+	adreno_of_get_limits(adreno_dev, child);
+	
+	return 0;
 }
 
 static void
