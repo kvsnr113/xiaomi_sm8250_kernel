@@ -21,25 +21,6 @@
 		operating-points-v2 = <&suspendable_ddr_bw_opp_table>;
 	};
 
-	gpu_opp_table: gpu-opp-table {
-		compatible = "operating-points-v2";
-
-		opp-480000000 {
-			opp-hz = /bits/ 64 <480000000>;
-			opp-microvolt = <RPMH_REGULATOR_LEVEL_SVS_L1>;
-		};
-
-		opp-381000000 {
-			opp-hz = /bits/ 64 <381000000>;
-			opp-microvolt = <RPMH_REGULATOR_LEVEL_SVS>;
-		};
-
-		opp-290000000 {
-			opp-hz = /bits/ 64 <290000000>;
-			opp-microvolt = <RPMH_REGULATOR_LEVEL_LOW_SVS>;
-		};
-	};
-
 	msm_gpu: qcom,kgsl-3d0@3d00000 {
 		label = "kgsl-3d0";
 		compatible = "qcom,kgsl-3d0", "qcom,kgsl-3d";
@@ -204,58 +185,6 @@
 				reg = <3>;
 				qcom,mempool-page-size = <1048576>;
 				qcom,mempool-reserved = <32>;
-			};
-		};
-
-		/* Power levels */
-		qcom,gpu-pwrlevels {
-			#address-cells = <1>;
-			#size-cells = <0>;
-
-			compatible = "qcom,gpu-pwrlevels";
-
-			qcom,gpu-pwrlevel@0 {
-				reg = <0>;
-				qcom,gpu-freq = <480000000>;
-				qcom,bus-freq-ddr7 = <11>;
-				qcom,bus-min-ddr7 = <11>;
-				qcom,bus-max-ddr7 = <11>;
-
-				qcom,bus-freq-ddr8 = <11>;
-				qcom,bus-min-ddr8 = <11>;
-				qcom,bus-max-ddr8 = <11>;
-			};
-
-			qcom,gpu-pwrlevel@1 {
-				reg = <1>;
-				qcom,gpu-freq = <381000000>;
-				qcom,bus-freq-ddr7 = <9>;
-				qcom,bus-min-ddr7 = <7>;
-				qcom,bus-max-ddr7 = <11>;
-
-				qcom,bus-freq-ddr8 = <8>;
-				qcom,bus-min-ddr8 = <7>;
-				qcom,bus-max-ddr8 = <11>;
-			};
-
-			qcom,gpu-pwrlevel@2 {
-				reg = <2>;
-				qcom,gpu-freq = <290000000>;
-				qcom,bus-freq-ddr7 = <2>;
-				qcom,bus-min-ddr7 = <1>;
-				qcom,bus-max-ddr7 = <9>;
-
-				qcom,bus-freq-ddr8 = <2>;
-				qcom,bus-min-ddr8 = <1>;
-				qcom,bus-max-ddr8 = <8>;
-			};
-
-			qcom,gpu-pwrlevel@3 {
-				reg = <3>;
-				qcom,gpu-freq = <0>;
-				qcom,bus-freq = <0>;
-				qcom,bus-min = <0>;
-				qcom,bus-max = <0>;
 			};
 		};
 	};
