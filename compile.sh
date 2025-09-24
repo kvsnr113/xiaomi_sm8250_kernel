@@ -138,7 +138,10 @@ send_file() {
 }
 
 clearbuild() {
-    rm -rf "$K_IMG" "$K_DTB" "$K_DTBO" "$KERNEL_DIR/out/log.txt" "$KERNEL_DIR/out/arch/arm64/boot/dts/vendor/qcom"
+    rm -rf "$K_IMG" \
+    "$K_DTB" "$K_DTBO" \
+    "$KERNEL_DIR/out/arch/arm64/boot/dts/vendor/qcom" \
+    "$KERNEL_DIR/out/log.txt"
 }
 
 zipbuild() {
