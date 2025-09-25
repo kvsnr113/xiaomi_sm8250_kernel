@@ -12,7 +12,6 @@ struct e404_attributes {
     int rom_type;
     int dtbo_type;
     int batt_profile;
-    int dvq_input_boost;
     int kgsl_skip_zeroing;
     int pid_shrink;
     int file_sync;
