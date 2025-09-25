@@ -441,11 +441,11 @@ endif
 # Rule to compile a set of .o files into one .a file (without symbol table)
 #
 
-quiet_cmd_ar_builtin = AR      $@
+quiet_cmd_ar_builtin =
       cmd_ar_builtin = rm -f $@; \
                      $(AR) rcSTP$(KBUILD_ARFLAGS) $@ $(filter $(real-obj-y), $^)
 
-quiet_cmd_ar_and_symver = AR      $@
+quiet_cmd_ar_and_symver =
       cmd_ar_and_symver = $(cmd_update_lto_symversions); $(cmd_ar_builtin)
 
 $(obj)/built-in.a: $(real-obj-y) FORCE
@@ -469,7 +469,7 @@ $(modorder-target): $(subdir-ym) FORCE
 #
 # Rule to compile a set of .o files into one .a file (with symbol table)
 #
-quiet_cmd_ar_lib = AR      $@
+quiet_cmd_ar_lib =
       cmd_ar_lib = $(cmd_update_lto_symversions); $(cmd_ar)
 
 $(obj)/lib.a: $(lib-y) FORCE
