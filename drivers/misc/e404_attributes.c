@@ -4,7 +4,6 @@
 
 struct e404_attributes e404_data = {
     .kernelsu = 0,
-    .effcpu = 0,
     .rom_type = 1,
     .dtbo_type = 1,
     .batt_profile = 1,
@@ -24,12 +23,6 @@ static struct kobject *e404_kobj;
 int early_kernelsu = 1;
 #else
 int early_kernelsu = 0;
-#endif
-
-#ifdef CONFIG_E404_EFFCPU_DEFAULT
-int early_effcpu = 1;
-#else
-int early_effcpu = 0;
 #endif
 
 #ifdef CONFIG_E404_MIUI
@@ -63,10 +56,6 @@ static int __init parse_e404_args(char *str)
             early_kernelsu = 1;
         else if (strcmp(arg, "root_noksu") == 0)
             early_kernelsu = 0;
-        else if (strcmp(arg, "dtb_effcpu") == 0)
-            early_effcpu = 1;
-        else if (strcmp(arg, "dtb_def") == 0)
-            early_effcpu = 0;
         else if (strcmp(arg, "rom_port") == 0)
             early_rom_type = 3;
         else if (strcmp(arg, "rom_oem") == 0)
@@ -91,14 +80,12 @@ early_param("e404_args", parse_e404_args);
 
 static void e404_parse_attributes(void) {
     e404_data.kernelsu = early_kernelsu;
-    e404_data.effcpu = early_effcpu;
     e404_data.rom_type = early_rom_type;
     e404_data.dtbo_type = early_dtbo_type;
     e404_data.batt_profile = early_batt_profile;
 
-    pr_alert("E404 Early Attributes: KernelSU=%d, EFFCPU=%d, RomType=%d, DTBOType=%d, BatteryProfile=%d\n",
+    pr_alert("E404 Early Attributes: KernelSU=%d, RomType=%d, DTBOType=%d, BatteryProfile=%d\n",
         e404_data.kernelsu,
-        e404_data.effcpu,
         e404_data.rom_type,
         e404_data.dtbo_type,
         e404_data.batt_profile);
@@ -127,7 +114,6 @@ static ssize_t name##_store(struct kobject *kobj, struct kobj_attribute *attr, c
 static struct kobj_attribute name##_attr = __ATTR(name, 0664, name##_show, name##_store);
 
 E404_ATTR_RO(kernelsu);
-E404_ATTR_RO(effcpu);
 E404_ATTR_RO(rom_type);
 E404_ATTR_RO(dtbo_type);
 E404_ATTR_RO(batt_profile);
@@ -143,7 +129,6 @@ E404_ATTR_RW(file_sync);
 
 static struct attribute *e404_attrs[] = {
     &kernelsu_attr.attr,
-    &effcpu_attr.attr,
     &rom_type_attr.attr,
     &dtbo_type_attr.attr,
     &batt_profile_attr.attr,
