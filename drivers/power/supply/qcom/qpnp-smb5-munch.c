@@ -369,15 +369,12 @@ static int smb5_chg_config_init(struct smb5 *chip)
 		chg->param = smb5_pm8150b_params;
 		chg->name = "pm7250b_charger";
 		chg->wa_flags |= CHG_TERMINATION_WA;
-		chg->uusb_moisture_protection_capable = true;
 		break;
 	case PM6150_SUBTYPE:
 		chip->chg.chg_param.smb_version = PM6150_SUBTYPE;
 		chg->param = smb5_pm8150b_params;
 		chg->name = "pm6150_charger";
 		chg->wa_flags |= SW_THERM_REGULATION_WA | CHG_TERMINATION_WA;
-		if (pmic_rev_id->rev4 >= 2)
-			chg->uusb_moisture_protection_capable = true;
 		chg->main_fcc_max = PM6150_MAX_FCC_UA;
 		break;
 	case PMI632_SUBTYPE:
@@ -391,8 +388,6 @@ static int smb5_chg_config_init(struct smb5 *chip)
 		/* PMI632 does not support PD */
 		chg->pd_not_supported = true;
 		chg->lpd_disabled = true;
-		if (pmic_rev_id->rev4 >= 2)
-			chg->uusb_moisture_protection_enabled = true;
 		chg->hw_max_icl_ua =
 			(chip->dt.usb_icl_ua > 0) ? chip->dt.usb_icl_ua
 						: PMI632_MAX_ICL_UA;
@@ -1064,11 +1059,6 @@ static int smb5_parse_dt_misc(struct smb5 *chip, struct device_node *node)
 	chg->fcc_stepper_enable = of_property_read_bool(node,
 					"qcom,fcc-stepping-enable");
 
-	if (chg->uusb_moisture_protection_capable)
-		chg->uusb_moisture_protection_enabled =
-			of_property_read_bool(node,
-					"qcom,uusb-moisture-protection-enable");
-
 	chg->hw_die_temp_mitigation = of_property_read_bool(node,
 					"qcom,hw-die-temp-mitigation");
 
@@ -1444,7 +1434,6 @@ static enum power_supply_property smb5_usb_props[] = {
 	POWER_SUPPLY_PROP_SMB_EN_REASON,
 	POWER_SUPPLY_PROP_ADAPTER_CC_MODE,
 	POWER_SUPPLY_PROP_SCOPE,
-	POWER_SUPPLY_PROP_MOISTURE_DETECTED,
 	POWER_SUPPLY_PROP_HVDCP_OPTI_ALLOWED,
 	POWER_SUPPLY_PROP_QC_OPTI_DISABLE,
 	POWER_SUPPLY_PROP_VOLTAGE_VPH,
@@ -1612,9 +1601,6 @@ static int smb5_usb_get_prop(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_SMB_EN_REASON:
 		val->intval = chg->cp_reason;
-		break;
-	case POWER_SUPPLY_PROP_MOISTURE_DETECTED:
-		val->intval = chg->moisture_present;
 		break;
 	case POWER_SUPPLY_PROP_HVDCP_OPTI_ALLOWED:
 		val->intval = !chg->flash_active;
@@ -3661,39 +3647,6 @@ static int smb5_configure_micro_usb(struct smb_charger *chg)
 		dev_err(chg->dev,
 			"Couldn't configure Type-C interrupts rc=%d\n", rc);
 		return rc;
-	}
-
-	if (chg->uusb_moisture_protection_enabled) {
-		/* Enable moisture detection interrupt */
-		rc = smblib_masked_write(chg, TYPE_C_INTERRUPT_EN_CFG_2_REG,
-				TYPEC_WATER_DETECTION_INT_EN_BIT,
-				TYPEC_WATER_DETECTION_INT_EN_BIT);
-		if (rc < 0) {
-			dev_err(chg->dev, "Couldn't enable moisture detection interrupt rc=%d\n",
-				rc);
-			return rc;
-		}
-
-		/* Enable uUSB factory mode */
-		rc = smblib_masked_write(chg, TYPEC_U_USB_CFG_REG,
-					EN_MICRO_USB_FACTORY_MODE_BIT,
-					EN_MICRO_USB_FACTORY_MODE_BIT);
-		if (rc < 0) {
-			dev_err(chg->dev, "Couldn't enable uUSB factory mode c=%d\n",
-				rc);
-			return rc;
-		}
-
-		/* Disable periodic monitoring of CC_ID pin */
-		rc = smblib_write(chg,
-			((chg->chg_param.smb_version == PMI632_SUBTYPE) ?
-				PMI632_TYPEC_U_USB_WATER_PROTECTION_CFG_REG :
-				TYPEC_U_USB_WATER_PROTECTION_CFG_REG), 0);
-		if (rc < 0) {
-			dev_err(chg->dev, "Couldn't disable periodic monitoring of CC_ID rc=%d\n",
-				rc);
-			return rc;
-		}
 	}
 
 	/* Enable HVDCP detection and authentication */
