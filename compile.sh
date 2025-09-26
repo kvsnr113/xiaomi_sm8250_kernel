@@ -9,7 +9,7 @@ BASE_DIR="$PWD"
 cd "$KERNEL_DIR"
 
 AK3_DIR="$BASE_DIR/AnyKernel3"
-[[ ! -d "$AK3_DIR" ]] && echo -e "(X) Please Provide AnyKernel3 !" && exit 1
+[[ ! -d "$AK3_DIR" ]] && echo "!! Please Provide AnyKernel3 !!" && exit 1
 
 # Parse command line arguments
 TYPE="CI"
@@ -64,6 +64,8 @@ for device in "${!DEVICE_MAP[@]}"; do
     fi
 done
 
+[[ ! "$TARGET" ]] && echo "-- !! Please set build device target !! --" && exit 1
+
 # Set kernel image paths
 K_IMG="$KERNEL_DIR/out/arch/arm64/boot/Image"
 K_DTBO="$KERNEL_DIR/out/arch/arm64/boot/dtbo.img"
@@ -76,8 +78,8 @@ if [[ -f "$TELEGRAM_CONFIG" ]]; then
     export TOKEN="$TELEGRAM_TOKEN"
     export CHATID="$TELEGRAM_CHATID"
 else
-    echo "Warning: Telegram config file not found at $TELEGRAM_CONFIG"
-    echo "Telegram notifications will be disabled"
+    echo "-- Warning: Telegram config file not found at $TELEGRAM_CONFIG --"
+    echo "-- Telegram notifications will be disabled --"
     export TOKEN=""
     export CHATID=""
 fi
@@ -139,13 +141,14 @@ send_file() {
 
 clearbuild() {
     rm -rf "$K_IMG" \
-    "$K_DTB" "$K_DTBO" \
+    "$K_DTB" \
+    "$K_DTBO" \
     "$KERNEL_DIR/out/arch/arm64/boot/dts/vendor/qcom" \
     "$KERNEL_DIR/out/log.txt"
 }
 
 zipbuild() {
-    echo -e "(OK) Zipping Kernel !"
+    echo "-- Zipping Kernel --"
     cd "$AK3_DIR" || exit 1
     ZIP_NAME="E404R-${TYPE}-${TARGET}-$(date "+%y%m%d").zip"
     zip -r9 "$BASE_DIR/$ZIP_NAME" */ "${TARGET}"-* anykernel.sh -x .git README.md LICENSE
@@ -211,10 +214,10 @@ compilebuild() {
     local make_flags=(-kj16 O=out "${BUILD_FLAGS[@]}")
     
     if [[ $TC == *Clang* ]]; then
-        echo "Compiling with Clang (using ccache)"
+        echo "-- Compiling with Clang --"
         make "${make_flags[@]}" 2>&1 | tee -a out/log.txt
     else
-        echo "Compiling with GCC"
+        echo "-- Compiling with GCC --"
         make "${make_flags[@]}" 2>&1 | tee -a out/log.txt
     fi
 
@@ -224,7 +227,7 @@ compilebuild() {
     echo "==============================="
     
     if [[ ! -e $K_IMG ]]; then
-        echo -e "(X) Kernel Build Error !"
+        echo "-- !! Kernel Build Error !! --"
         send_file "$KERNEL_DIR/out/log.txt"
         git restore "arch/arm64/configs/$DEFCONFIG"
         send_msg "<b>! Kernel Build Error !</b>"
@@ -248,15 +251,16 @@ while true; do
     echo " ║ 2. Start Build                     ║"
     echo " ║ 3. Send File                       ║"
     echo " ║ f. Clean Out Directory             ║"
+    echo " ║ fc. Clean Ccache                   ║"
     echo " ║ e. Exit                            ║"
     echo " ╚════════════════════════════════════╝"
-    echo -n " Enter your choice: "
+    echo -n " Enter your choice : "
     read -r menu
     
     case "$menu" in
         1)
             make O=out "$DEFCONFIG"
-            echo -e "(OK) Exported $DEFCONFIG to Out Dir !"
+            echo "-- Exported $DEFCONFIG to Out Dir --"
             ;;
         2)
             START="$(date +"%s")"
@@ -285,17 +289,20 @@ while true; do
             clearbuild
             ;;
         3)
-            echo -e "(OK) Sending to Telegram"
+            echo "-- Sending to Telegram --"
             send_file "$BASE_DIR/*E404*.zip" ""
             ;;
         f)
             rm -rf out
             ;;
+        fc)
+            ccache -c
+            ;;
         e)
             exit 0
             ;;
         *)
-            echo "Invalid option!"
+            echo "-- !! Invalid option !! --"
             ;;
     esac
 done
