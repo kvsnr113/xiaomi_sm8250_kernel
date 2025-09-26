@@ -1150,9 +1150,6 @@ static int smblib_usb_pd_adapter_allowance_override(struct smb_charger *chg,
 {
 	int rc = 0;
 
-	if (chg->chg_param.smb_version == PMI632_SUBTYPE)
-		return 0;
-
 	rc = smblib_write(chg, USBIN_ADAPTER_ALLOW_OVERRIDE_REG,
 						allowed_voltage);
 	if (rc < 0)
@@ -1196,9 +1193,6 @@ static int smblib_set_usb_pd_allowed_voltage(struct smb_charger *chg,
 {
 	int rc, aicl_threshold;
 	u8 vbus_allowance;
-
-	if (chg->chg_param.smb_version == PMI632_SUBTYPE)
-		return 0;
 
 	if (chg->pd_active == POWER_SUPPLY_PD_PPS_ACTIVE) {
 		vbus_allowance = CONTINUOUS;
@@ -1869,10 +1863,6 @@ int smblib_set_icl_current(struct smb_charger *chg, int icl_ua)
 	/* suspend if 25mA or less is requested */
 	bool suspend = (icl_ua <= USBIN_25MA);
 
-	if (chg->chg_param.smb_version == PMI632_SUBTYPE)
-		schgm_flash_torch_priority(chg, suspend ? TORCH_BOOST_MODE :
-					TORCH_BUCK_MODE);
-
 	/* Do not configure ICL from SW for DAM cables */
 	if (smblib_get_prop_typec_mode(chg) ==
 			    POWER_SUPPLY_TYPEC_SINK_DEBUG_ACCESSORY)
@@ -2041,9 +2031,6 @@ static int smblib_dc_suspend_vote_callback(struct votable *votable, void *data,
 			int suspend, const char *client)
 {
 	struct smb_charger *chg = data;
-
-	if (chg->chg_param.smb_version == PMI632_SUBTYPE)
-		return 0;
 
 	/* resume input if suspend is invalid */
 	if (suspend < 0)
@@ -2926,12 +2913,8 @@ int smblib_get_prop_batt_iterm(struct smb_charger *chg,
 	temp = buf[1] | (buf[0] << 8);
 	temp = sign_extend32(temp, 15);
 
-	if (chg->chg_param.smb_version == PMI632_SUBTYPE)
-		temp = DIV_ROUND_CLOSEST(temp * ITERM_LIMITS_PMI632_MA,
-					ADC_CHG_ITERM_MASK);
-	else
-		temp = DIV_ROUND_CLOSEST(temp * ITERM_LIMITS_PM8150B_MA,
-					ADC_CHG_ITERM_MASK);
+	temp = DIV_ROUND_CLOSEST(temp * ITERM_LIMITS_PM8150B_MA,
+				ADC_CHG_ITERM_MASK);
 
 	val->intval = temp;
 
@@ -5098,11 +5081,6 @@ int smblib_get_prop_dc_present(struct smb_charger *chg,
 	int rc;
 	u8 stat;
 
-	if (chg->chg_param.smb_version == PMI632_SUBTYPE) {
-		val->intval = 0;
-		return 0;
-	}
-
 	rc = smblib_read(chg, DCIN_BASE + INT_RT_STS_OFFSET, &stat);
 	if (rc < 0) {
 		smblib_err(chg, "Couldn't read DCIN_RT_STS rc=%d\n", rc);
@@ -5127,11 +5105,6 @@ int smblib_get_prop_dc_online(struct smb_charger *chg,
 {
 	int rc = 0;
 	u8 stat;
-
-	if (chg->chg_param.smb_version == PMI632_SUBTYPE) {
-		val->intval = 0;
-		return 0;
-	}
 
 	if (get_client_vote(chg->dc_suspend_votable, USER_VOTER)) {
 		val->intval = false;
@@ -5613,11 +5586,7 @@ int smblib_get_prop_usb_voltage_max_design(struct smb_charger *chg,
 	case POWER_SUPPLY_TYPE_USB_HVDCP_3P5:
 	case POWER_SUPPLY_TYPE_USB_HVDCP_3:
 	case POWER_SUPPLY_TYPE_USB_PD:
-		if (chg->chg_param.smb_version == PMI632_SUBTYPE)
-			val->intval = MICRO_9V;
-		else
-			val->intval = MICRO_12V;
-		break;
+		val->intval = MICRO_12V;
 	default:
 		val->intval = MICRO_5V;
 		break;
@@ -5642,10 +5611,7 @@ int smblib_get_prop_usb_voltage_max(struct smb_charger *chg,
 		/* else, fallthrough */
 	case POWER_SUPPLY_TYPE_USB_HVDCP_3P5:
 	case POWER_SUPPLY_TYPE_USB_HVDCP_3:
-		if (chg->chg_param.smb_version == PMI632_SUBTYPE)
-			val->intval = MICRO_9V;
-		else
-			val->intval = MICRO_12V;
+		val->intval = MICRO_12V;
 		break;
 	case POWER_SUPPLY_TYPE_USB_PD:
 		val->intval = chg->voltage_max_uv;
@@ -6196,19 +6162,9 @@ int smblib_get_prop_usb_current_now(struct smb_charger *chg,
 		/*
 		 * For PM8150B, scaling factor = reciprocal of
 		 * 0.2V/A in Buck mode, 0.4V/A in Boost mode.
-		 * For PMI632, scaling factor = reciprocal of
-		 * 0.4V/A in Buck mode, 0.8V/A in Boost mode.
 		 */
-		switch (chg->chg_param.smb_version) {
-		case PMI632_SUBTYPE:
-			buck_scale = 40;
-			boost_scale = 80;
-			break;
-		default:
-			buck_scale = 20;
-			boost_scale = 40;
-			break;
-		}
+		buck_scale = 20;
+		boost_scale = 40;
 
 		if (chg->otg_present || smblib_get_prop_dfp_mode(chg) !=
 				POWER_SUPPLY_TYPEC_NONE) {
@@ -7741,9 +7697,6 @@ irqreturn_t usbin_uv_irq_handler(int irq, void *data)
 			chg->aicl_cont_threshold_mv += AICL_STEP_MV;
 
 unsuspend_input:
-		/* Force torch in boost mode to ensure it works with low ICL */
-		if (chg->chg_param.smb_version == PMI632_SUBTYPE)
-			schgm_flash_torch_priority(chg, TORCH_BOOST_MODE);
 
 		if (chg->aicl_max_reached) {
 			smblib_dbg(chg, PR_MISC,
@@ -8409,10 +8362,6 @@ void smblib_usb_plugin_locked(struct smb_charger *chg)
 					&chg->param.aicl_cont_threshold,
 					chg->aicl_cont_threshold_mv);
 			chg->aicl_max_reached = false;
-
-			if (chg->chg_param.smb_version == PMI632_SUBTYPE)
-				schgm_flash_torch_priority(chg,
-						TORCH_BUCK_MODE);
 
 			data = chg->irq_info[USBIN_UV_IRQ].irq_data;
 			if (data) {
