@@ -25,89 +25,6 @@
 #include "step-chg-jeita.h"
 #include "schgm-flash.h"
 
-static struct smb_params smb5_pmi632_params = {
-	.fcc			= {
-		.name   = "fast charge current",
-		.reg    = CHGR_FAST_CHARGE_CURRENT_CFG_REG,
-		.min_u  = 0,
-		.max_u  = 3000000,
-		.step_u = 50000,
-	},
-	.fv			= {
-		.name   = "float voltage",
-		.reg    = CHGR_FLOAT_VOLTAGE_CFG_REG,
-		.min_u  = 3600000,
-		.max_u  = 4800000,
-		.step_u = 10000,
-	},
-	.usb_icl		= {
-		.name   = "usb input current limit",
-		.reg    = USBIN_CURRENT_LIMIT_CFG_REG,
-		.min_u  = 0,
-		.max_u  = 3000000,
-		.step_u = 50000,
-	},
-	.icl_max_stat		= {
-		.name   = "dcdc icl max status",
-		.reg    = ICL_MAX_STATUS_REG,
-		.min_u  = 0,
-		.max_u  = 3000000,
-		.step_u = 50000,
-	},
-	.icl_stat		= {
-		.name   = "input current limit status",
-		.reg    = ICL_STATUS_REG,
-		.min_u  = 0,
-		.max_u  = 3000000,
-		.step_u = 50000,
-	},
-	.otg_cl			= {
-		.name	= "usb otg current limit",
-		.reg	= DCDC_OTG_CURRENT_LIMIT_CFG_REG,
-		.min_u	= 500000,
-		.max_u	= 1000000,
-		.step_u	= 250000,
-	},
-	.jeita_cc_comp_hot	= {
-		.name	= "jeita fcc reduction",
-		.reg	= JEITA_CCCOMP_CFG_HOT_REG,
-		.min_u	= 0,
-		.max_u	= 1575000,
-		.step_u	= 25000,
-	},
-	.jeita_cc_comp_cold	= {
-		.name	= "jeita fcc reduction",
-		.reg	= JEITA_CCCOMP_CFG_COLD_REG,
-		.min_u	= 0,
-		.max_u	= 1575000,
-		.step_u	= 25000,
-	},
-	.freq_switcher		= {
-		.name	= "switching frequency",
-		.reg	= DCDC_FSW_SEL_REG,
-		.min_u	= 600,
-		.max_u	= 1200,
-		.step_u	= 400,
-		.set_proc = smblib_set_chg_freq,
-	},
-	.aicl_5v_threshold		= {
-		.name   = "AICL 5V threshold",
-		.reg    = USBIN_5V_AICL_THRESHOLD_REG,
-		.min_u  = 4000,
-		.max_u  = 4700,
-		.step_u = 100,
-	},
-	.aicl_cont_threshold		= {
-		.name   = "AICL CONT threshold",
-		.reg    = USBIN_CONT_AICL_THRESHOLD_REG,
-		.min_u  = 4000,
-		.max_u  = 8800,
-		.step_u = 100,
-		.get_proc = smblib_get_aicl_cont_threshold,
-		.set_proc = smblib_set_aicl_cont_threshold,
-	},
-};
-
 static struct smb_params smb5_pm8150b_params = {
 	.fcc			= {
 		.name   = "fast charge current",
@@ -331,8 +248,6 @@ static const struct clamp_config clamp_levels[] = {
 	{ {0x11C6, 0x11F9, 0x13F1}, {0x60, 0x2B, 0x9C} },
 };
 
-#define PMI632_MAX_ICL_UA	3000000
-#define PM6150_MAX_FCC_UA	3000000
 static int smb5_chg_config_init(struct smb5 *chip)
 {
 	struct smb_charger *chg = &chip->chg;
@@ -363,34 +278,6 @@ static int smb5_chg_config_init(struct smb5 *chip)
 		chg->param = smb5_pm8150b_params;
 		chg->name = "pm8150b_charger";
 		chg->wa_flags |= CHG_TERMINATION_WA;
-		break;
-	case PM7250B_SUBTYPE:
-		chip->chg.chg_param.smb_version = PM7250B_SUBTYPE;
-		chg->param = smb5_pm8150b_params;
-		chg->name = "pm7250b_charger";
-		chg->wa_flags |= CHG_TERMINATION_WA;
-		break;
-	case PM6150_SUBTYPE:
-		chip->chg.chg_param.smb_version = PM6150_SUBTYPE;
-		chg->param = smb5_pm8150b_params;
-		chg->name = "pm6150_charger";
-		chg->wa_flags |= SW_THERM_REGULATION_WA | CHG_TERMINATION_WA;
-		chg->main_fcc_max = PM6150_MAX_FCC_UA;
-		break;
-	case PMI632_SUBTYPE:
-		chip->chg.chg_param.smb_version = PMI632_SUBTYPE;
-		chg->wa_flags |= WEAK_ADAPTER_WA | USBIN_OV_WA
-				| CHG_TERMINATION_WA | USBIN_ADC_WA
-				| SKIP_MISC_PBS_IRQ_WA;
-		chg->param = smb5_pmi632_params;
-		chg->use_extcon = true;
-		chg->name = "pmi632_charger";
-		/* PMI632 does not support PD */
-		chg->pd_not_supported = true;
-		chg->lpd_disabled = true;
-		chg->hw_max_icl_ua =
-			(chip->dt.usb_icl_ua > 0) ? chip->dt.usb_icl_ua
-						: PMI632_MAX_ICL_UA;
 		break;
 	default:
 		pr_err("PMIC subtype %d not supported\n",
@@ -2033,8 +1920,6 @@ static int smb5_usb_main_get_prop(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_FLASH_TRIGGER:
 		val->intval = 0;
-		if (chg->chg_param.smb_version == PMI632_SUBTYPE)
-			rc = schgm_flash_get_vreg_ok(chg, &val->intval);
 		break;
 	case POWER_SUPPLY_PROP_TOGGLE_STAT:
 		val->intval = 0;
@@ -2085,7 +1970,6 @@ static int smb5_usb_main_set_prop(struct power_supply *psy,
 {
 	struct smb5 *chip = power_supply_get_drvdata(psy);
 	struct smb_charger *chg = &chip->chg;
-	union power_supply_propval pval = {0, };
 	enum power_supply_type real_chg_type = chg->real_charger_type;
 	int rc = 0, offset_ua = 0;
 
@@ -2106,35 +1990,6 @@ static int smb5_usb_main_set_prop(struct power_supply *psy,
 		rc = smblib_set_icl_current(chg, val->intval);
 		break;
 	case POWER_SUPPLY_PROP_FLASH_ACTIVE:
-		if ((chg->chg_param.smb_version == PMI632_SUBTYPE)
-				&& (chg->flash_active != val->intval)) {
-			chg->flash_active = val->intval;
-
-			rc = smblib_get_prop_usb_present(chg, &pval);
-			if (rc < 0)
-				pr_err("Failed to get USB preset status rc=%d\n",
-						rc);
-			if (pval.intval) {
-				rc = smblib_force_vbus_voltage(chg,
-					chg->flash_active ? FORCE_5V_BIT
-								: IDLE_BIT);
-				if (rc < 0)
-					pr_err("Failed to force 5V\n");
-				else
-					chg->pulse_cnt = 0;
-			} else {
-				/* USB absent & flash not-active - vote 100mA */
-				vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER,
-							true, SDP_100_MA);
-			}
-
-			pr_debug("flash active VBUS 5V restriction %s\n",
-				chg->flash_active ? "applied" : "removed");
-
-			/* Update userspace */
-			if (chg->batt_psy)
-				power_supply_changed(chg->batt_psy);
-		}
 		break;
 	case POWER_SUPPLY_PROP_TOGGLE_STAT:
 		rc = smblib_toggle_smb_en(chg, val->intval);
@@ -2347,24 +2202,6 @@ static const struct power_supply_desc dc_psy_desc = {
 	.set_property = smb5_dc_set_prop,
 	.property_is_writeable = smb5_dc_prop_is_writeable,
 };
-
-static int smb5_init_dc_psy(struct smb5 *chip)
-{
-	struct power_supply_config dc_cfg = {};
-	struct smb_charger *chg = &chip->chg;
-
-	dc_cfg.drv_data = chip;
-	dc_cfg.of_node = chg->dev->of_node;
-	chg->dc_psy = devm_power_supply_register(chg->dev,
-						  &dc_psy_desc,
-						  &dc_cfg);
-	if (IS_ERR(chg->dc_psy)) {
-		pr_err("Couldn't register USB power supply\n");
-		return PTR_ERR(chg->dc_psy);
-	}
-
-	return 0;
-}
 
 static int smb5_get_prop_input_voltage_regulation(struct smb_charger *chg,
 					union power_supply_propval *val)
@@ -3597,30 +3434,28 @@ static int smb5_configure_typec(struct smb_charger *chg)
 		}
 	}
 
-	if (chg->chg_param.smb_version != PMI632_SUBTYPE) {
-		/*
-		 * Enable detection of unoriented debug
-		 * accessory in source mode.
-		 */
-		rc = smblib_masked_write(chg, DEBUG_ACCESS_SRC_CFG_REG,
-					 EN_UNORIENTED_DEBUG_ACCESS_SRC_BIT,
-					 EN_UNORIENTED_DEBUG_ACCESS_SRC_BIT);
-		if (rc < 0) {
-			dev_err(chg->dev,
-				"Couldn't configure TYPE_C_DEBUG_ACCESS_SRC_CFG_REG rc=%d\n",
-					rc);
-			return rc;
-		}
+	/*
+	 * Enable detection of unoriented debug
+	 * accessory in source mode.
+	 */
+	rc = smblib_masked_write(chg, DEBUG_ACCESS_SRC_CFG_REG,
+				 EN_UNORIENTED_DEBUG_ACCESS_SRC_BIT,
+				 EN_UNORIENTED_DEBUG_ACCESS_SRC_BIT);
+	if (rc < 0) {
+		dev_err(chg->dev,
+			"Couldn't configure TYPE_C_DEBUG_ACCESS_SRC_CFG_REG rc=%d\n",
+				rc);
+		return rc;
+	}
 
-		rc = smblib_masked_write(chg, USBIN_LOAD_CFG_REG,
-				USBIN_IN_COLLAPSE_GF_SEL_MASK |
-				USBIN_AICL_STEP_TIMING_SEL_MASK,
-				0);
-		if (rc < 0) {
-			dev_err(chg->dev,
-				"Couldn't set USBIN_LOAD_CFG_REG rc=%d\n", rc);
-			return rc;
-		}
+	rc = smblib_masked_write(chg, USBIN_LOAD_CFG_REG,
+			USBIN_IN_COLLAPSE_GF_SEL_MASK |
+			USBIN_AICL_STEP_TIMING_SEL_MASK,
+			0);
+	if (rc < 0) {
+		dev_err(chg->dev,
+			"Couldn't set USBIN_LOAD_CFG_REG rc=%d\n", rc);
+		return rc;
 	}
 
 	/* Set CC threshold to 1.6 V in source mode */
@@ -3666,10 +3501,7 @@ static int smb5_configure_iterm_thresholds_adc(struct smb5 *chip)
 	s16 raw_hi_thresh, raw_lo_thresh, max_limit_ma;
 	struct smb_charger *chg = &chip->chg;
 
-	if (chip->chg.chg_param.smb_version == PMI632_SUBTYPE)
-		max_limit_ma = ITERM_LIMITS_PMI632_MA;
-	else
-		max_limit_ma = ITERM_LIMITS_PM8150B_MA;
+	max_limit_ma = ITERM_LIMITS_PM8150B_MA;
 
 	if (chip->dt.term_current_thresh_hi_ma < (-1 * max_limit_ma)
 		|| chip->dt.term_current_thresh_hi_ma > max_limit_ma
@@ -3801,10 +3633,6 @@ static int smb5_init_dc_peripheral(struct smb_charger *chg)
 {
 	int rc = 0;
 
-	/* PMI632 does not have DC peripheral */
-	if (chg->chg_param.smb_version == PMI632_SUBTYPE)
-		return 0;
-
 	/* Set DCIN ICL to 100 mA */
 	rc = smblib_set_charge_param(chg, &chg->param.dc_icl, DCIN_ICL_MIN_UA);
 	if (rc < 0) {
@@ -3934,37 +3762,6 @@ static int smb5_configure_float_charger(struct smb5 *chip)
 static int smb5_init_connector_type(struct smb_charger *chg)
 {
 	int rc, type = 0;
-	u8 val = 0;
-
-	/*
-	 * PMI632 can have the connector type defined by a dedicated register
-	 * PMI632_TYPEC_MICRO_USB_MODE_REG or by a common TYPEC_U_USB_CFG_REG.
-	 */
-	if (chg->chg_param.smb_version == PMI632_SUBTYPE) {
-		rc = smblib_read(chg, PMI632_TYPEC_MICRO_USB_MODE_REG, &val);
-		if (rc < 0) {
-			dev_err(chg->dev, "Couldn't read USB mode rc=%d\n", rc);
-			return rc;
-		}
-		type = !!(val & MICRO_USB_MODE_ONLY_BIT);
-	}
-
-	/*
-	 * If PMI632_TYPEC_MICRO_USB_MODE_REG is not set and for all non-PMI632
-	 * check the connector type using TYPEC_U_USB_CFG_REG.
-	 */
-	if (!type) {
-		rc = smblib_read(chg, TYPEC_U_USB_CFG_REG, &val);
-		if (rc < 0) {
-			dev_err(chg->dev, "Couldn't read U_USB config rc=%d\n",
-					rc);
-			return rc;
-		}
-
-		type = !!(val & EN_MICRO_USB_MODE_BIT);
-	}
-
-	pr_debug("Connector type=%s\n", type ? "Micro USB" : "TypeC");
 
 	if (type) {
 		chg->connector_type = POWER_SUPPLY_CONNECTOR_MICRO_USB;
@@ -3977,16 +3774,6 @@ static int smb5_init_connector_type(struct smb_charger *chg)
 		dev_err(chg->dev,
 			"Couldn't configure TypeC/micro-USB mode rc=%d\n", rc);
 		return rc;
-	}
-
-	/*
-	 * PMI632 based hw init:
-	 * - Rerun APSD to ensure proper charger detection if device
-	 *   boots with charger connected.
-	 * - Initialize flash module for PMI632
-	 */
-	if (chg->chg_param.smb_version == PMI632_SUBTYPE) {
-		schgm_flash_init(chg);
 	}
 
 	smblib_rerun_apsd_if_required(chg);
@@ -5068,14 +4855,6 @@ static int smb5_probe(struct platform_device *pdev)
 
 	switch (chg->chg_param.smb_version) {
 	case PM8150B_SUBTYPE:
-	case PM6150_SUBTYPE:
-	case PM7250B_SUBTYPE:
-		rc = smb5_init_dc_psy(chip);
-		if (rc < 0) {
-			pr_err("Couldn't initialize dc psy rc=%d\n", rc);
-			goto cleanup;
-		}
-		break;
 	default:
 		break;
 	}
