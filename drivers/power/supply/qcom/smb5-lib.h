@@ -71,7 +71,6 @@ enum print_reason {
 #define FCC_STEPPER_VOTER		"FCC_STEPPER_VOTER"
 #define SW_THERM_REGULATION_VOTER	"SW_THERM_REGULATION_VOTER"
 #define JEITA_ARB_VOTER			"JEITA_ARB_VOTER"
-#define MOISTURE_VOTER			"MOISTURE_VOTER"
 #define HVDCP2_ICL_VOTER		"HVDCP2_ICL_VOTER"
 #define HVDCP2_FCC_VOTER		"HVDCP2_FCC_VOTER"
 #define HVDCP2_12V_ICL_VOTER		"HVDCP2_12V_ICL_VOTER"
@@ -454,7 +453,6 @@ static const unsigned int smblib_extcon_cable[] = {
 
 enum lpd_reason {
 	LPD_NONE,
-	LPD_MOISTURE_DETECTED,
 	LPD_FLOATING_CABLE,
 };
 
@@ -676,7 +674,6 @@ struct smb_charger {
 	struct work_struct	bms_update_work;
 	struct work_struct	pl_update_work;
 	struct work_struct	jeita_update_work;
-	struct work_struct	moisture_protection_work;
 	struct work_struct	chg_termination_work;
 	struct work_struct	dcin_aicl_work;
 	struct work_struct	cp_status_change_work;
@@ -717,7 +714,6 @@ struct smb_charger {
 	struct delayed_work     check_init_boot;
 
 	struct alarm		lpd_recheck_timer;
-	struct alarm		moisture_protection_alarm;
 	struct alarm		chg_termination_alarm;
 	struct alarm		dcin_aicl_alarm;
 
@@ -823,9 +819,6 @@ struct smb_charger {
 	u32			jeita_soft_hys_thlds[2];
 	int			jeita_soft_fcc[2];
 	int			jeita_soft_fv[2];
-	bool			moisture_present;
-	bool			uusb_moisture_protection_capable;
-	bool			uusb_moisture_protection_enabled;
 	bool			hw_die_temp_mitigation;
 	bool			hw_connector_mitigation;
 	bool			hw_skin_temp_mitigation;
