@@ -55,6 +55,11 @@ dtbo-$(CONFIG_BOARD_UMI) += \
 umi-sm8250-overlay.dtbo-base := kona-v2.1.dtb
 endif
 
+ifeq ($(CONFIG_BOARD_PIPA),y)
+dtbo-$(CONFIG_BOARD_PIPA) += \
+		pipa-sm8250-overlay.dtbo
+pipa-sm8250-overlay.dtbo-base := kona-v2.1.dtb
+endif
 
 ifeq ($(CONFIG_BOARD_MUNCH),y)
 dtbo-$(CONFIG_BOARD_MUNCH) += \
