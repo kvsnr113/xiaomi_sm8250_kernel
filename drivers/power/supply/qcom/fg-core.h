@@ -101,6 +101,8 @@
 #define EMPTY_REPORT_SOC		1
 
 #define CRITICAL_HIGH_TEMP			580
+#define FFC_WARM_THRE 				480
+#define FFC_COLD_THRE 				150
 
 enum prof_load_status {
 	PROFILE_MISSING,
@@ -531,6 +533,7 @@ struct fg_dev {
 	bool			empty_restart_fg;
 	bool			report_full;
 	bool			profile_already_find;
+	bool			input_present;
 	bool			shutdown_delay;
 	enum fg_version		version;
 	struct batt_params	param;
