@@ -49,7 +49,7 @@
 #include <linux/platform_data/spi-mt65xx.h>
 #endif
 
-#define NVT_DEBUG 1
+#define NVT_DEBUG 0
 
 //---GPIO number---
 #define NVTTOUCH_RST_PIN 980
@@ -70,12 +70,8 @@
 //---SPI driver info.---
 #define NVT_SPI_NAME "NVT-ts"
 
-#if NVT_DEBUG
-#define NVT_LOG(fmt, args...)    pr_err("[%s] %s %d: " fmt, NVT_SPI_NAME, __func__, __LINE__, ##args)
-#else
-#define NVT_LOG(fmt, args...)    pr_info("[%s] %s %d: " fmt, NVT_SPI_NAME, __func__, __LINE__, ##args)
-#endif
-#define NVT_ERR(fmt, args...)    pr_err("[%s] %s %d: " fmt, NVT_SPI_NAME, __func__, __LINE__, ##args)
+#define NVT_LOG(fmt, args...) ((void)0)
+#define NVT_ERR(fmt, args...) ((void)0)
 
 //---Input device info.---
 #define NVT_TS_NAME "NVTCapacitiveTouchScreen"
@@ -171,6 +167,8 @@ struct nvt_ts_data {
 	bool pen_charge_connect;
 	bool game_mode_enable;
 	struct device *dev;
+	int pen_count;
+	bool pen_shield_flag;
 #endif
 	struct mutex pen_switch_lock;
 	int ic_state;
