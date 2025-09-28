@@ -15,7 +15,7 @@ config CAMERA_LMI
     help
 	  "Enable Xiaomi LMI Camera modifications"
 
-config TECHPACK_CAMERA_XIAOMI_TABLET
+config CAMERA_XIAOMI_TABLET
     bool "Xiaomi camera tablet"
     help
       "Enable Xiaomi Tablet Camera modifications"
