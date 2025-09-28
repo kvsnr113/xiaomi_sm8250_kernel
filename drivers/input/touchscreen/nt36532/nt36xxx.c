@@ -998,20 +998,11 @@ static int32_t nvt_flash_close(struct inode *inode, struct file *file)
 	return 0;
 }
 
-#ifdef HAVE_PROC_OPS
 static const struct proc_ops nvt_flash_fops = {
 	.proc_open = nvt_flash_open,
 	.proc_release = nvt_flash_close,
 	.proc_read = nvt_flash_read,
 };
-#else
-static const struct file_operations nvt_flash_fops = {
-	.owner = THIS_MODULE,
-	.open = nvt_flash_open,
-	.release = nvt_flash_close,
-	.read = nvt_flash_read,
-};
-#endif
 
 /*******************************************************
 Description:
@@ -1219,6 +1210,7 @@ int switch_pen_input_device(void) {
 	uint8_t buf[8] = {0};
 	int32_t ret = 0;
 	int enable = 0;
+	static int enable_last_status = -1;
 
 	NVT_LOG("++\n");
 	if (!bTouchIsAwake || !ts) {
@@ -1229,8 +1221,15 @@ int switch_pen_input_device(void) {
 	msleep(35);
 	mutex_lock(&ts->pen_switch_lock);
 	enable = ((ts->pen_bluetooth_connect) && !(ts->pen_charge_connect) && !(ts->game_mode_enable));
+#ifdef CONFIG_FACTORY_BUILD
+	enable = 1;
+	ts->pen_bluetooth_connect = 1;
+	ts->pen_charge_connect = 0;
+	NVT_LOG("factory version enable %d\n", enable);
+#else
 	NVT_LOG("pen_bluetooth_connect is %d, pen_charge_connect is %d, game_mode_enable %d, %s pen input device\n",
 	ts->pen_bluetooth_connect, ts->pen_charge_connect, ts->game_mode_enable, enable ? "ENABLE" : "DISABLE");
+#endif
 	//---set xdata index to EVENT BUF ADDR---
 	ret = nvt_set_page(ts->mmap->EVENT_BUF_ADDR | EVENT_MAP_HOST_CMD);
 	if (ret < 0) {
@@ -1242,8 +1241,20 @@ int switch_pen_input_device(void) {
 	buf[1] = 0x7B;
 	buf[2] = !!enable;
 	ret = CTP_SPI_WRITE(ts->client, buf, 3);
-	if (ret < 0)
+	if (ret < 0) {
 		NVT_ERR("set pen %s failed!\n", enable ? "DISABLE" : "ENABLE");
+		goto nvt_set_pen_enable_out;
+	}
+
+	if (enable_last_status == enable) {
+		NVT_LOG("enable_last_status is %d, enable is %d, skip kobj change\n", enable_last_status, enable);
+		goto nvt_set_pen_enable_out;
+	}
+	enable_last_status = enable;
+
+#ifdef CONFIG_TOUCHSCREEN_NEW_PEN_CONNECT_STRATEGY
+	update_pen_connect_strategy_value(!!enable);
+#endif //CONFIG_TOUCHSCREEN_NEW_PEN_CONNECT_STRATEGY
 
 nvt_set_pen_enable_out:
 	mutex_unlock(&ts->pen_switch_lock);
@@ -1283,8 +1294,6 @@ static void release_pen_event(void) {
 		input_report_abs(ts->pen_input_dev, ABS_DISTANCE, 0);
 		input_report_key(ts->pen_input_dev, BTN_TOUCH, 0);
 		input_report_key(ts->pen_input_dev, BTN_TOOL_PEN, 0);
-		input_report_key(ts->pen_input_dev, KEY_PAGEDOWN, 0);
-		input_report_key(ts->pen_input_dev, KEY_PAGEUP, 0);
 		input_sync(ts->pen_input_dev);
 	}
 }
@@ -1429,10 +1438,10 @@ static int32_t nvt_parse_dt(struct device *dev)
 
 static int nvt_get_panel_type(struct nvt_ts_data *ts_data)
 {
-	int i;
+	int i = 0;
 	int j;
 	u8 *lockdown = ts_data->lockdown_info;
-	struct nvt_config_info *panel_list = ts->config_array;
+	struct nvt_config_info;
 
 	for (j = 0; j < 60; j++) {
 		if (lockdown[1] == 0x42) {
@@ -1865,7 +1874,6 @@ static irqreturn_t nvt_ts_work_func(int irq, void *data)
 			nvt_ts_pen_gesture_report(pen_format_id);
 		}
 		mutex_unlock(&ts->lock);
-
 		return IRQ_HANDLED;
 	}
 #endif
@@ -2022,8 +2030,6 @@ static irqreturn_t nvt_ts_work_func(int irq, void *data)
 				input_report_abs(ts->pen_input_dev, ABS_TILT_Y, pen_tilt_y);
 				input_report_abs(ts->pen_input_dev, ABS_DISTANCE, pen_distance);
 				input_report_key(ts->pen_input_dev, BTN_TOOL_PEN, !!pen_distance || !!pen_pressure);
-				input_report_key(ts->pen_input_dev, KEY_PAGEDOWN, pen_btn1);
-				input_report_key(ts->pen_input_dev, KEY_PAGEUP, pen_btn2);
 				// TBD: pen battery event report
 				// NVT_LOG("pen_battery=%d\n", pen_battery);
 			} else if (pen_format_id == 0xF0) {
@@ -2041,8 +2047,6 @@ static irqreturn_t nvt_ts_work_func(int irq, void *data)
 			input_report_abs(ts->pen_input_dev, ABS_DISTANCE, 0);
 			input_report_key(ts->pen_input_dev, BTN_TOUCH, 0);
 			input_report_key(ts->pen_input_dev, BTN_TOOL_PEN, 0);
-			input_report_key(ts->pen_input_dev, KEY_PAGEDOWN, 0);
-			input_report_key(ts->pen_input_dev, KEY_PAGEUP, 0);
 		}
 
 		input_sync(ts->pen_input_dev);
@@ -2051,7 +2055,6 @@ static irqreturn_t nvt_ts_work_func(int irq, void *data)
 XFER_ERROR:
 
 	mutex_unlock(&ts->lock);
-
 	return IRQ_HANDLED;
 }
 
@@ -2301,13 +2304,6 @@ static void nvt_init_touchmode_data(void)
 	xiaomi_touch_interfaces.touch_mode[Touch_Resist_RF][SET_CUR_VALUE] = 0;
 	xiaomi_touch_interfaces.touch_mode[Touch_Resist_RF][GET_CUR_VALUE] = 0;
 
-	/* Stylus */
-	xiaomi_touch_interfaces.touch_mode[Touch_Pen_ENABLE][GET_MAX_VALUE] = 18;
-	xiaomi_touch_interfaces.touch_mode[Touch_Pen_ENABLE][GET_MIN_VALUE] = -1;
-	xiaomi_touch_interfaces.touch_mode[Touch_Pen_ENABLE][GET_DEF_VALUE] = 0;
-	xiaomi_touch_interfaces.touch_mode[Touch_Pen_ENABLE][SET_CUR_VALUE] = 0;
-	xiaomi_touch_interfaces.touch_mode[Touch_Pen_ENABLE][GET_CUR_VALUE] = 0;
-
 	for (i = 0; i < Touch_Mode_NUM; i++) {
 		NVT_LOG("mode:%d, set cur:%d, get cur:%d, def:%d min:%d max:%d\n",
 			i,
@@ -2477,15 +2473,41 @@ static int nvt_set_cur_value(int nvt_mode, int nvt_value)
 		return 0;
 	} else if (nvt_mode == Touch_Pen_ENABLE && ts && nvt_value >= 0) {
 #if defined(NVT_PEN_CONNECT_STRATEGY)
-		if (!!(nvt_value >> 4))
-			ts->pen_bluetooth_connect = 1;
-		else
-			ts->pen_bluetooth_connect = 0;
+		if(!!(nvt_value >> 4)) {
+			/* connect logic */
+			if((nvt_value & 0x0F) == 2){
+				ts->pen_count ++ ;
+			} else if((nvt_value & 0x0F) == 1) {
+				ts->pen_shield_flag = 1;//shield K81P
+				NVT_LOG("Xiaomi stylus Generation one connect, sheild pen connection");
+			}
+		} else {
+			/* disconnect logic */
+			if((nvt_value & 0x0F) == 2){
+				ts->pen_count -- ;
+			} else if((nvt_value & 0x0F) == 1) {
+				ts->pen_shield_flag = 0;//open it
+				NVT_LOG("Xiaomi stylus Generation one disconnect, open pen connection");
+			}
+		}
 
+		if(ts->pen_shield_flag){
+			/* sheild pen connection */
+			ts->pen_bluetooth_connect = 0;
+		} else {
+			if(!!ts->pen_count){
+				/* M81P connect num >= 1 */
+				ts->pen_bluetooth_connect = 1;
+			} else {
+				/* M81P connect num = 0 */
+				ts->pen_bluetooth_connect = 0;
+			}
+
+		}
 		ts->db_wakeup = ts->db_wakeup & 0xFD; /* close off screen short hand by defalut */
 		dsi_panel_doubleclick_enable(!!ts->db_wakeup);
-		NVT_LOG("nvt_value is 0x%02X, pen status is %s, pen id is %d, pen_bluetooth_connect is %d, db_wakeup is 0x%02X",
-					nvt_value, (nvt_value >> 4) ? "connect":"disconnct", nvt_value & 0x0F, ts->pen_bluetooth_connect, ts->db_wakeup);
+		NVT_LOG("nvt_value is 0x%02X, pen status is %s, pen id is %d, pen_bluetooth_connect is %d, pen_count is %d, db_wakeup is 0x%02X",
+					nvt_value, (nvt_value >> 4) ? "connect":"disconnct", nvt_value & 0x0F, ts->pen_bluetooth_connect, ts->pen_count, ts->db_wakeup);
 #endif
 
 		switch_pen_input_device();
@@ -2701,14 +2723,14 @@ static void get_lockdown_info(struct work_struct *work)
 			NVT_ERR("can't get lockdown info");
 		} else {
 			NVT_LOG("Lockdown:0x%02x,0x%02x\n",
-				ts->lockdown_info[0], ts->lockdown_info[1]);
+			ts->lockdown_info[0], ts->lockdown_info[1]);
 		}
 		ts->lkdown_readed = true;
 		NVT_LOG("READ LOCKDOWN!!!");
 	} else {
 		NVT_LOG("use lockdown info that readed before");
-		NVT_LOG("Lockdown:0x%02x,0x%02x\n", ts->lockdown_info[0],
-			ts->lockdown_info[1]);
+		NVT_LOG("Lockdown:0x%02x,0x%02x\n",
+			ts->lockdown_info[0], ts->lockdown_info[1]);
 	}
 }
 
@@ -3140,8 +3162,6 @@ static int32_t nvt_ts_probe(struct spi_device *client)
 		ts->pen_input_dev->keybit[BIT_WORD(BTN_TOUCH)] = BIT_MASK(BTN_TOUCH);
 		ts->pen_input_dev->keybit[BIT_WORD(BTN_TOOL_PEN)] |= BIT_MASK(BTN_TOOL_PEN);
 		//ts->pen_input_dev->keybit[BIT_WORD(BTN_TOOL_RUBBER)] |= BIT_MASK(BTN_TOOL_RUBBER);
-		ts->pen_input_dev->keybit[BIT_WORD(KEY_PAGEDOWN)] |= BIT_MASK(KEY_PAGEDOWN);
-		ts->pen_input_dev->keybit[BIT_WORD(KEY_PAGEUP)] |= BIT_MASK(KEY_PAGEUP);
 		ts->pen_input_dev->propbit[0] = BIT(INPUT_PROP_DIRECT);
 
 #if NVT_SUPER_RESOLUTION_N
@@ -3292,6 +3312,8 @@ static int32_t nvt_ts_probe(struct spi_device *client)
 	ts->pen_bluetooth_connect = 0;
 	ts->pen_charge_connect = false;
 	ts->game_mode_enable = 0;
+	ts->pen_count = 0;
+	ts->pen_shield_flag = 0;
 	mutex_init(&ts->pen_switch_lock);
 	INIT_WORK(&ts->pen_charge_state_change_work, nvt_pen_charge_state_change_work);
 	ts->pen_charge_state_notifier.notifier_call = nvt_pen_charge_state_notifier_callback;
