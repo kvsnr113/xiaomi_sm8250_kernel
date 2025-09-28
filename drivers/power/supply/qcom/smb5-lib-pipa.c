@@ -910,7 +910,7 @@ int smblib_set_fastcharge_mode(struct smb_charger *chg, bool enable)
 {
 	union power_supply_propval pval = {0,};
 	int rc = 0;
-	int termi = -220, batt_temp;
+	int termi = -220, batt_temp = 0;
 	int effective_fv = 0;
 
 	if (!chg->bms_psy)
@@ -1185,9 +1185,6 @@ static int smblib_usb_pd_adapter_allowance_override(struct smb_charger *chg,
 {
 	int rc = 0;
 
-	if (chg->chg_param.smb_version == PMI632_SUBTYPE)
-		return 0;
-
 	rc = smblib_write(chg, USBIN_ADAPTER_ALLOW_OVERRIDE_REG,
 						allowed_voltage);
 	if (rc < 0)
@@ -1231,9 +1228,6 @@ static int smblib_set_usb_pd_allowed_voltage(struct smb_charger *chg,
 {
 	int rc, aicl_threshold;
 	u8 vbus_allowance;
-
-	if (chg->chg_param.smb_version == PMI632_SUBTYPE)
-		return 0;
 
 	if (chg->pd_active == POWER_SUPPLY_PD_PPS_ACTIVE) {
 		vbus_allowance = CONTINUOUS;
@@ -1905,10 +1899,6 @@ int smblib_set_icl_current(struct smb_charger *chg, int icl_ua)
 	/* suspend if 25mA or less is requested */
 	bool suspend = (icl_ua <= USBIN_25MA);
 
-	if (chg->chg_param.smb_version == PMI632_SUBTYPE)
-		schgm_flash_torch_priority(chg, suspend ? TORCH_BOOST_MODE :
-					TORCH_BUCK_MODE);
-
 	/* Do not configure ICL from SW for DAM cables */
 	if (smblib_get_prop_typec_mode(chg) ==
 			    POWER_SUPPLY_TYPEC_SINK_DEBUG_ACCESSORY)
@@ -2051,105 +2041,6 @@ int smblib_get_irq_status(struct smb_charger *chg,
 		val->intval |= (reg & PULSE_SKIP_IRQ_BIT);
 	mutex_unlock(&chg->irq_status_lock);
 
-	return rc;
-}
-
-/****************************
- * uUSB Moisture Protection *
- ****************************/
-#define MICRO_USB_DETECTION_ON_TIME_20_MS 0x08
-#define MICRO_USB_DETECTION_PERIOD_X_100 0x03
-#define U_USB_STATUS_WATER_PRESENT 0x00
-static int smblib_set_moisture_protection(struct smb_charger *chg,
-				bool enable)
-{
-	int rc = 0;
-
-	if (chg->moisture_present == enable) {
-		smblib_dbg(chg, PR_MISC, "No change in moisture protection status\n");
-		return rc;
-	}
-
-	if (enable) {
-		chg->moisture_present = true;
-
-		/* Disable uUSB factory mode detection */
-		rc = smblib_masked_write(chg, TYPEC_U_USB_CFG_REG,
-					EN_MICRO_USB_FACTORY_MODE_BIT, 0);
-		if (rc < 0) {
-			smblib_err(chg, "Couldn't disable uUSB factory mode detection rc=%d\n",
-				rc);
-			return rc;
-		}
-
-		/* Disable moisture detection and uUSB state change interrupt */
-		rc = smblib_masked_write(chg, TYPE_C_INTERRUPT_EN_CFG_2_REG,
-					TYPEC_WATER_DETECTION_INT_EN_BIT |
-					MICRO_USB_STATE_CHANGE_INT_EN_BIT, 0);
-		if (rc < 0) {
-			smblib_err(chg, "Couldn't disable moisture detection interrupt rc=%d\n",
-			rc);
-			return rc;
-		}
-
-		/* Set 1% duty cycle on ID detection */
-		rc = smblib_masked_write(chg,
-				((chg->chg_param.smb_version == PMI632_SUBTYPE)
-				? PMI632_TYPEC_U_USB_WATER_PROTECTION_CFG_REG :
-				TYPEC_U_USB_WATER_PROTECTION_CFG_REG),
-				EN_MICRO_USB_WATER_PROTECTION_BIT |
-				MICRO_USB_DETECTION_ON_TIME_CFG_MASK |
-				MICRO_USB_DETECTION_PERIOD_CFG_MASK,
-				EN_MICRO_USB_WATER_PROTECTION_BIT |
-				MICRO_USB_DETECTION_ON_TIME_20_MS |
-				MICRO_USB_DETECTION_PERIOD_X_100);
-		if (rc < 0) {
-			smblib_err(chg, "Couldn't set 1 percent CC_ID duty cycle rc=%d\n",
-				rc);
-			return rc;
-		}
-
-		vote(chg->usb_icl_votable, MOISTURE_VOTER, true, 0);
-	} else {
-		chg->moisture_present = false;
-		vote(chg->usb_icl_votable, MOISTURE_VOTER, false, 0);
-
-		/* Enable moisture detection and uUSB state change interrupt */
-		rc = smblib_masked_write(chg, TYPE_C_INTERRUPT_EN_CFG_2_REG,
-					TYPEC_WATER_DETECTION_INT_EN_BIT |
-					MICRO_USB_STATE_CHANGE_INT_EN_BIT,
-					TYPEC_WATER_DETECTION_INT_EN_BIT |
-					MICRO_USB_STATE_CHANGE_INT_EN_BIT);
-		if (rc < 0) {
-			smblib_err(chg, "Couldn't enable moisture detection and uUSB state change interrupt rc=%d\n",
-				rc);
-			return rc;
-		}
-
-		/* Disable periodic monitoring of CC_ID pin */
-		rc = smblib_write(chg,
-				((chg->chg_param.smb_version == PMI632_SUBTYPE)
-				? PMI632_TYPEC_U_USB_WATER_PROTECTION_CFG_REG :
-				TYPEC_U_USB_WATER_PROTECTION_CFG_REG), 0);
-		if (rc < 0) {
-			smblib_err(chg, "Couldn't disable 1 percent CC_ID duty cycle rc=%d\n",
-				rc);
-			return rc;
-		}
-
-		/* Enable uUSB factory mode detection */
-		rc = smblib_masked_write(chg, TYPEC_U_USB_CFG_REG,
-					EN_MICRO_USB_FACTORY_MODE_BIT,
-					EN_MICRO_USB_FACTORY_MODE_BIT);
-		if (rc < 0) {
-			smblib_err(chg, "Couldn't disable uUSB factory mode detection rc=%d\n",
-				rc);
-			return rc;
-		}
-	}
-
-	smblib_dbg(chg, PR_MISC, "Moisture protection %s\n",
-			chg->moisture_present ? "enabled" : "disabled");
 	return rc;
 }
 
@@ -3338,7 +3229,7 @@ static void smblib_set_wireless_present(struct smb_charger *chg, bool present)
 int smblib_get_prop_wireless_version(struct smb_charger *chg,
 				     union power_supply_propval *val)
 {
-	int rc;
+	int rc = 0;
 
 	chg->idtp_psy = power_supply_get_by_name("idt");
 	if (chg->idtp_psy) {
@@ -3360,7 +3251,7 @@ int smblib_get_prop_wireless_version(struct smb_charger *chg,
 int smblib_get_prop_wireless_fw_version(struct smb_charger *chg,
 				     union power_supply_propval *val)
 {
-	int rc;
+	int rc = 0;
 
 	chg->idtp_psy = power_supply_get_by_name("idt");
 	if (chg->idtp_psy) {
@@ -4678,7 +4569,7 @@ static int smblib_update_thermal_readings(struct smb_charger *chg)
 int smblib_set_vbus_disable(struct smb_charger *chg,
 					bool disable)
 {
-	int ret;
+	int ret = 0;
 
 	smblib_dbg(chg, PR_OEM, "set vbus disable:%d\n", disable);
 	if (disable) {
@@ -4796,7 +4687,7 @@ static void smblib_after_ffc_chg_dis_work(struct work_struct *work)
 			after_ffc_chg_dis_work.work);
 	union power_supply_propval pval = {0, };
 	int rc = 0;
-	u64 delta_us;
+	u64 delta_us = 0;
 	static int count;
 
 	if (!chg->last_ffc_remove_time)
@@ -5198,7 +5089,7 @@ exit:
 int smblib_get_prop_voltage_wls_output(struct smb_charger *chg,
 				    union power_supply_propval *val)
 {
-	int rc;
+	int rc = 0;
 
 	if (chg->wireless_bq)
 		return rc;
@@ -5332,7 +5223,7 @@ int smblib_get_prop_dc_voltage_max(struct smb_charger *chg,
 int smblib_get_prop_dc_voltage_now(struct smb_charger *chg,
 				    union power_supply_propval *val)
 {
-	int rc;
+	int rc = 0;
 
 	if (chg->wireless_bq)
 		return rc;
@@ -5373,7 +5264,7 @@ int smblib_set_prop_dc_current_max(struct smb_charger *chg,
 int smblib_set_prop_voltage_wls_output(struct smb_charger *chg,
 				    const union power_supply_propval *val)
 {
-	int rc;
+	int rc = 0;
 
 	if (chg->wireless_bq)
 		return rc;
@@ -5411,7 +5302,7 @@ int smblib_set_prop_voltage_wls_output(struct smb_charger *chg,
 
 int smblib_set_prop_dc_reset(struct smb_charger *chg)
 {
-	int rc;
+	int rc = 0;
 
 	if (chg->wireless_bq)
 		return rc;
@@ -5698,7 +5589,7 @@ int smblib_get_prop_usb_online(struct smb_charger *chg,
 int smblib_get_usb_online(struct smb_charger *chg,
 			union power_supply_propval *val)
 {
-	int rc;
+	int rc = 0;
 
 	if (chg->report_input_absent) {
 		val->intval = 0;
@@ -9438,32 +9329,9 @@ irqreturn_t usb_source_change_irq_handler(int irq, void *data)
 enum alarmtimer_restart smblib_lpd_recheck_timer(struct alarm *alarm,
 						ktime_t time)
 {
-	union power_supply_propval pval;
 	struct smb_charger *chg = container_of(alarm, struct smb_charger,
 							lpd_recheck_timer);
-	int rc;
-
-	if (chg->lpd_reason == LPD_MOISTURE_DETECTED) {
-		pval.intval = POWER_SUPPLY_TYPEC_PR_DUAL;
-		rc = smblib_set_prop_typec_power_role(chg, &pval);
-		if (rc < 0) {
-			smblib_err(chg, "Couldn't write 0x%02x to TYPE_C_INTRPT_ENB_SOFTWARE_CTRL rc=%d\n",
-				pval.intval, rc);
-			return ALARMTIMER_NORESTART;
-		}
-		chg->moisture_present = false;
-		power_supply_changed(chg->usb_psy);
-	} else {
-		rc = smblib_masked_write(chg, TYPE_C_INTERRUPT_EN_CFG_2_REG,
-					TYPEC_WATER_DETECTION_INT_EN_BIT,
-					TYPEC_WATER_DETECTION_INT_EN_BIT);
-		if (rc < 0) {
-			smblib_err(chg, "Couldn't set TYPE_C_INTERRUPT_EN_CFG_2_REG rc=%d\n",
-					rc);
-			return ALARMTIMER_NORESTART;
-		}
-	}
-
+							
 	chg->lpd_stage = LPD_STAGE_NONE;
 	chg->lpd_reason = LPD_NONE;
 
@@ -9473,52 +9341,10 @@ enum alarmtimer_restart smblib_lpd_recheck_timer(struct alarm *alarm,
 #define RSBU_K_300K_UV	3000000
 static bool smblib_src_lpd(struct smb_charger *chg)
 {
-	union power_supply_propval pval;
-	bool lpd_flag = false;
-	u8 stat;
-	int rc;
-
-	if (chg->lpd_disabled)
-		return false;
-
-	rc = smblib_read(chg, TYPE_C_SRC_STATUS_REG, &stat);
-	if (rc < 0) {
-		smblib_err(chg, "Couldn't read TYPE_C_SRC_STATUS_REG rc=%d\n",
-				rc);
-		return false;
-	}
-
-	switch (stat & DETECTED_SNK_TYPE_MASK) {
-	case SRC_DEBUG_ACCESS_BIT:
-		if (smblib_rsbux_low(chg, RSBU_K_300K_UV))
-			lpd_flag = true;
-		break;
-	case SRC_RD_RA_VCONN_BIT:
-	case SRC_RD_OPEN_BIT:
-	case AUDIO_ACCESS_RA_RA_BIT:
-	default:
-		break;
-	}
-
-	if (lpd_flag) {
-		chg->lpd_stage = LPD_STAGE_COMMIT;
-		pval.intval = POWER_SUPPLY_TYPEC_PR_SINK;
-		rc = smblib_set_prop_typec_power_role(chg, &pval);
-		if (rc < 0)
-			smblib_err(chg, "Couldn't write 0x%02x to TYPE_C_INTRPT_ENB_SOFTWARE_CTRL rc=%d\n",
-				pval.intval, rc);
-		chg->lpd_reason = LPD_MOISTURE_DETECTED;
-		chg->moisture_present =  true;
-		vote(chg->usb_icl_votable, LPD_VOTER, true, 0);
-		alarm_start_relative(&chg->lpd_recheck_timer,
-						ms_to_ktime(60000));
-		power_supply_changed(chg->usb_psy);
-	} else {
-		chg->lpd_reason = LPD_NONE;
-		chg->typec_mode = smblib_get_prop_typec_mode(chg);
-	}
-
-	return lpd_flag;
+	// Never detect moisture, always reset state
+    chg->lpd_stage = LPD_STAGE_NONE;
+    chg->lpd_reason = LPD_NONE;
+	return false;
 }
 
 static void typec_src_fault_condition_cfg(struct smb_charger *chg, bool src)
@@ -10061,27 +9887,7 @@ irqreturn_t typec_or_rid_detection_change_irq_handler(int irq, void *data)
 	smblib_dbg(chg, PR_INTERRUPT, "IRQ: %s\n", irq_data->name);
 
 	if (chg->connector_type == POWER_SUPPLY_CONNECTOR_MICRO_USB) {
-		if (chg->uusb_moisture_protection_enabled) {
-			/*
-			 * Adding pm_stay_awake as because pm_relax is called
-			 * on exit path from the work routine.
-			 */
-			pm_stay_awake(chg->dev);
-			schedule_work(&chg->moisture_protection_work);
-		}
-
 		cancel_delayed_work_sync(&chg->uusb_otg_work);
-		/*
-		 * Skip OTG enablement if RID interrupt triggers with moisture
-		 * protection still enabled.
-		 */
-		if (!chg->moisture_present) {
-			vote(chg->awake_votable, OTG_DELAY_VOTER, true, 0);
-			smblib_dbg(chg, PR_INTERRUPT, "Scheduling OTG work\n");
-			schedule_delayed_work(&chg->uusb_otg_work,
-				msecs_to_jiffies(chg->otg_delay_ms));
-		}
-
 		goto out;
 	}
 
@@ -11748,104 +11554,6 @@ static void smblib_thermal_regulation_work(struct work_struct *work)
 					rc);
 }
 
-#define MOISTURE_PROTECTION_CHECK_DELAY_MS 300000		/* 5 mins */
-static void smblib_moisture_protection_work(struct work_struct *work)
-{
-	struct smb_charger *chg = container_of(work, struct smb_charger,
-						moisture_protection_work);
-	int rc;
-	bool usb_plugged_in;
-	u8 stat;
-
-	/*
-	 * Hold awake votable to prevent pm_relax being called prior to
-	 * completion of this work.
-	 */
-	vote(chg->awake_votable, MOISTURE_VOTER, true, 0);
-
-	/*
-	 * Disable 1% duty cycle on CC_ID pin and enable uUSB factory mode
-	 * detection to track any change on RID, as interrupts are disable.
-	 */
-	rc = smblib_write(chg, ((chg->chg_param.smb_version == PMI632_SUBTYPE) ?
-			PMI632_TYPEC_U_USB_WATER_PROTECTION_CFG_REG :
-			TYPEC_U_USB_WATER_PROTECTION_CFG_REG), 0);
-	if (rc < 0) {
-		smblib_err(chg, "Couldn't disable periodic monitoring of CC_ID rc=%d\n",
-			rc);
-		goto out;
-	}
-
-	rc = smblib_masked_write(chg, TYPEC_U_USB_CFG_REG,
-					EN_MICRO_USB_FACTORY_MODE_BIT,
-					EN_MICRO_USB_FACTORY_MODE_BIT);
-	if (rc < 0) {
-		smblib_err(chg, "Couldn't enable uUSB factory mode detection rc=%d\n",
-			rc);
-		goto out;
-	}
-
-	/*
-	 * Add a delay of 100ms to allow change in rid to reflect on
-	 * status registers.
-	 */
-	msleep(100);
-
-	rc = smblib_read(chg, USBIN_BASE + INT_RT_STS_OFFSET, &stat);
-	if (rc < 0) {
-		smblib_err(chg, "Couldn't read USB_INT_RT_STS rc=%d\n", rc);
-		goto out;
-	}
-	usb_plugged_in = (bool)(stat & USBIN_PLUGIN_RT_STS_BIT);
-
-	/* Check uUSB status for moisture presence */
-	rc = smblib_read(chg, TYPEC_U_USB_STATUS_REG, &stat);
-	if (rc < 0) {
-		smblib_err(chg, "Couldn't read TYPE_C_U_USB_STATUS_REG rc=%d\n",
-				rc);
-		goto out;
-	}
-
-	/*
-	 * Factory mode detection happens in case of USB plugged-in by using
-	 * a different current source of 2uA which can hamper moisture
-	 * detection. Since factory mode is not supported in kernel, factory
-	 * mode detection can be considered as equivalent to presence of
-	 * moisture.
-	 */
-	if (stat == U_USB_STATUS_WATER_PRESENT || stat == U_USB_FMB1_BIT ||
-			stat == U_USB_FMB2_BIT || (usb_plugged_in &&
-			stat == U_USB_FLOAT1_BIT)) {
-		smblib_set_moisture_protection(chg, true);
-		alarm_start_relative(&chg->moisture_protection_alarm,
-			ms_to_ktime(MOISTURE_PROTECTION_CHECK_DELAY_MS));
-	} else {
-		smblib_set_moisture_protection(chg, false);
-		rc = alarm_cancel(&chg->moisture_protection_alarm);
-		if (rc < 0)
-			smblib_err(chg, "Couldn't cancel moisture protection alarm\n");
-	}
-
-out:
-	vote(chg->awake_votable, MOISTURE_VOTER, false, 0);
-}
-
-static enum alarmtimer_restart moisture_protection_alarm_cb(struct alarm *alarm,
-							ktime_t now)
-{
-	struct smb_charger *chg = container_of(alarm, struct smb_charger,
-					moisture_protection_alarm);
-
-	smblib_dbg(chg, PR_MISC, "moisture Protection Alarm Triggered %lld\n",
-			ktime_to_ms(now));
-
-	/* Atomic context, cannot use voter */
-	pm_stay_awake(chg->dev);
-	schedule_work(&chg->moisture_protection_work);
-
-	return ALARMTIMER_NORESTART;
-}
-
 static void smblib_chg_termination_work(struct work_struct *work)
 {
 	union power_supply_propval pval;
@@ -12225,13 +11933,6 @@ static void smblib_lpd_ra_open_work(struct work_struct *work)
 		goto out;
 	}
 
-	/* quit if moisture status is gone or in attached state */
-	if (!(stat & TYPEC_WATER_DETECTION_STATUS_BIT)
-			|| (stat & TYPEC_TCCDEBOUNCE_DONE_STATUS_BIT)) {
-		chg->lpd_stage = LPD_STAGE_NONE;
-		goto out;
-	}
-
 	chg->lpd_stage = LPD_STAGE_COMMIT;
 
 	/* Enable source only mode */
@@ -12247,19 +11948,7 @@ static void smblib_lpd_ra_open_work(struct work_struct *work)
 	usleep_range(1500, 1510);
 
 	if (smblib_rsbux_low(chg, RSBU_K_300K_UV)) {
-		/* Moisture detected, enable sink only mode */
-		pval.intval = POWER_SUPPLY_TYPEC_PR_SINK;
-		rc = smblib_set_prop_typec_power_role(chg, &pval);
-		if (rc < 0) {
-			smblib_err(chg, "Couldn't set typec sink only rc=%d\n",
-				rc);
-			goto out;
-		}
-
-		chg->lpd_reason = LPD_MOISTURE_DETECTED;
-		chg->moisture_present =  true;
-		vote(chg->usb_icl_votable, LPD_VOTER, true, 0);
-
+		chg->lpd_reason = LPD_FLOATING_CABLE;
 	} else {
 		/* Floating cable, disable water detection irq temporarily */
 		rc = smblib_masked_write(chg, TYPE_C_INTERRUPT_EN_CFG_2_REG,
@@ -12572,19 +12261,6 @@ int smblib_init(struct smb_charger *chg)
 		}
 	}
 
-	if (chg->uusb_moisture_protection_enabled) {
-		INIT_WORK(&chg->moisture_protection_work,
-					smblib_moisture_protection_work);
-
-		if (alarmtimer_get_rtcdev()) {
-			alarm_init(&chg->moisture_protection_alarm,
-				ALARM_BOOTTIME, moisture_protection_alarm_cb);
-		} else {
-			smblib_err(chg, "Failed to initialize moisture protection alarm\n");
-			return -ENODEV;
-		}
-	}
-
 	if (alarmtimer_get_rtcdev()) {
 		alarm_init(&chg->dcin_aicl_alarm, ALARM_REALTIME,
 				dcin_aicl_alarm_cb);
@@ -12703,10 +12379,6 @@ int smblib_deinit(struct smb_charger *chg)
 {
 	switch (chg->mode) {
 	case PARALLEL_MASTER:
-		if (chg->uusb_moisture_protection_enabled) {
-			alarm_cancel(&chg->moisture_protection_alarm);
-			cancel_work_sync(&chg->moisture_protection_work);
-		}
 		if (chg->wa_flags & CHG_TERMINATION_WA) {
 			alarm_cancel(&chg->chg_termination_alarm);
 			cancel_work_sync(&chg->chg_termination_work);

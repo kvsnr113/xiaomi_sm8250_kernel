@@ -306,8 +306,8 @@ static ssize_t gpio_set_show(struct device *dev, struct device_attribute *attr,
 static ssize_t gpio_set_store(struct device *dev, struct device_attribute *attr,
 			      const char *buf, size_t count)
 {
-	int gpio_pin;
-	int gpio_value;
+	int gpio_pin = 0;
+	int gpio_value = 0;
 	char delim[] = " ";
 	char *str = kstrdup(buf, GFP_KERNEL);
 	char *token = NULL;

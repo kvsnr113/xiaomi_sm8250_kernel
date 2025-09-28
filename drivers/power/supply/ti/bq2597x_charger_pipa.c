@@ -525,30 +525,6 @@ static int bq2597x_enable_wdt(struct bq2597x *bq, bool enable)
 }
 EXPORT_SYMBOL_GPL(bq2597x_enable_wdt);
 
-static int bq2597x_set_wdt(struct bq2597x *bq, int ms)
-{
-	int ret;
-	u8 val;
-
-	if (ms == 500)
-		val = BQ2597X_WATCHDOG_0P5S;
-	else if (ms == 1000)
-		val = BQ2597X_WATCHDOG_1S;
-	else if (ms == 5000)
-		val = BQ2597X_WATCHDOG_5S;
-	else if (ms == 30000)
-		val = BQ2597X_WATCHDOG_30S;
-	else
-		val = BQ2597X_WATCHDOG_30S;
-
-	val <<= BQ2597X_WATCHDOG_SHIFT;
-
-	ret = bq2597x_update_bits(bq, BQ2597X_REG_0B,
-				BQ2597X_WATCHDOG_MASK, val);
-	return ret;
-}
-EXPORT_SYMBOL_GPL(bq2597x_set_wdt);
-
 static int bq2597x_enable_batovp(struct bq2597x *bq, bool enable)
 {
 	int ret;
@@ -1184,23 +1160,6 @@ static int bq2597x_set_alarm_int_mask(struct bq2597x *bq, u8 mask)
 }
 EXPORT_SYMBOL_GPL(bq2597x_set_alarm_int_mask);
 
-static int bq2597x_clear_alarm_int_mask(struct bq2597x *bq, u8 mask)
-{
-	int ret;
-	u8 val;
-
-	ret = bq2597x_read_byte(bq, BQ2597X_REG_0F, &val);
-	if (ret)
-		return ret;
-
-	val &= ~mask;
-
-	ret = bq2597x_write_byte(bq, BQ2597X_REG_0F, val);
-
-	return ret;
-}
-EXPORT_SYMBOL_GPL(bq2597x_clear_alarm_int_mask);
-
 static int bq2597x_set_fault_int_mask(struct bq2597x *bq, u8 mask)
 {
 	int ret;
@@ -1217,24 +1176,6 @@ static int bq2597x_set_fault_int_mask(struct bq2597x *bq, u8 mask)
 	return ret;
 }
 EXPORT_SYMBOL_GPL(bq2597x_set_fault_int_mask);
-
-static int bq2597x_clear_fault_int_mask(struct bq2597x *bq, u8 mask)
-{
-	int ret;
-	u8 val;
-
-	ret = bq2597x_read_byte(bq, BQ2597X_REG_12, &val);
-	if (ret)
-		return ret;
-
-	val &= ~mask;
-
-	ret = bq2597x_write_byte(bq, BQ2597X_REG_12, val);
-
-	return ret;
-}
-EXPORT_SYMBOL_GPL(bq2597x_clear_fault_int_mask);
-
 
 static int bq2597x_set_sense_resistor(struct bq2597x *bq, int r_mohm)
 {
@@ -1500,9 +1441,9 @@ static int bq2597x_get_dev_role(struct i2c_client *client)
 	}
 
 	dev_info(&client->dev, "%s: matched to %s, dev_role: %d.\n",
-			__func__, of_id->compatible, (int)of_id->data);
+			__func__, of_id->compatible, (uintptr_t)of_id->data);
 
-	return (int)of_id->data;
+	return (uintptr_t)of_id->data;
 }
 
 static int bq2597x_parse_dt(struct bq2597x *bq, struct device *dev)
@@ -2223,7 +2164,7 @@ static int bq2597x_charger_is_writeable(struct power_supply *psy,
 
 static int bq2597x_psy_register(struct bq2597x *bq)
 {
-	int ret;
+	int ret = 0;
 
 	bq->psy_cfg.drv_data = bq;
 	bq->psy_cfg.of_node = bq->dev->of_node;
@@ -2254,22 +2195,6 @@ static int bq2597x_psy_register(struct bq2597x *bq)
 
 	return 0;
 }
-
-static void bq2597x_dump_reg(struct bq2597x *bq)
-{
-
-	int ret;
-	u8 val;
-	u8 addr;
-
-	for (addr = 0x00; addr <= 0x2B; addr++) {
-		ret = bq2597x_read_byte(bq, addr, &val);
-		if (!ret)
-			bq_err("Reg[%02X] = 0x%02X\n", addr, val);
-	}
-
-}
-EXPORT_SYMBOL_GPL(bq2597x_dump_reg);
 
 static void bq2597x_dump_important_regs(struct bq2597x *bq)
 {
