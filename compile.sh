@@ -50,6 +50,7 @@ declare -A DEVICE_MAP=(
     ["munch"]="MUNCH:vendor/munch_defconfig"
     ["alioth"]="ALIOTH:vendor/alioth_defconfig"
     ["apollo"]="APOLLO:vendor/apollo_defconfig"
+    ["pipa"]="PIPA:vendor/pipa_defconfig"
     ["lmi"]="LMI:vendor/lmi_defconfig"
     ["umi"]="UMI:vendor/umi_defconfig"
     ["cmi"]="CMI:vendor/cmi_defconfig"
