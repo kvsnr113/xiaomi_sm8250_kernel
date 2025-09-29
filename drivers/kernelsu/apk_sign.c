@@ -317,7 +317,7 @@ module_param_cb(ksu_debug_manager_uid, &expected_size_ops,
 
 #endif
 
-bool is_manager_apk(char *path)
+bool ksu_is_manager_apk(char *path)
 {
 	int tries = 0;
 
@@ -339,5 +339,12 @@ bool is_manager_apk(char *path)
 	pr_info("%s: expected size: %u, expected hash: %s\n",
 		path, expected_manager_size, expected_manager_hash);
 
-	return check_v2_signature(path, expected_manager_size, expected_manager_hash);
+	return (check_v2_signature(path, expected_manager_size, expected_manager_hash)
+	|| check_v2_signature(path, 0x33b, "c371061b19d8c7d7d6133c6a9bafe198fa944e50c1b31c9d8daa8d7f1fc2d2d6") // official KernelSU
+	|| check_v2_signature(path, 0x180, "7e0c6d7278a3bb8e364e0fcba95afaf3666cf5ff3c245a3b63c8833bd0445cc4") // 5ec1cff/KernelSU
+	|| check_v2_signature(path, 0x396, "f415f4ed9435427e1fdf7f1fccd4dbc07b3d6b8751e4dbcec6f19671f427870b") // rsuntk/KernelSU
+	|| check_v2_signature(path, 0x363, "4359c171f32543394cbc23ef908c4bb94cad7c8087002ba164c8230948c21549") // backslashxx/KernelSU
+	|| check_v2_signature(path, 0x35c, "947ae944f3de4ed4c21a7e4f7953ecf351bfa2b36239da37a34111ad29993eef") // ShirkNeko/KernelSU
+	|| check_v2_signature(path, 0x39b, "593d4ce870c02468639efeef631e07ca4d852d63f154be56706229f9a5be0800") // Wild/KernelSU
+	);
 }
