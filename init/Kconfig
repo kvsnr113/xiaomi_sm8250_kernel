@@ -95,6 +95,11 @@ config E404_KSU_DEFAULT
 	default y
 	depends on E404_SIGNATURE
 
+config E404_EFFCPU_DEFAULT
+	bool "E404 EFFCPU as default"
+	depends on E404_SIGNATURE
+	default n
+
 config E404_ALIOTH_5K_BATT_DEFAULT
 	bool "E404 ALIOTH 5K BATT as default"
 	depends on E404_SIGNATURE
