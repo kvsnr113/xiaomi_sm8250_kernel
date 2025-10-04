@@ -295,6 +295,7 @@ while true; do
             uploadbuild
 
             rm -f "$BASE_DIR/compile.log"
+            rm -f "$BASE_DIR/$ZIP_NAME"
 
             TIME_END=$(("$(date +"%s")" - "$TIME_START"))
 
