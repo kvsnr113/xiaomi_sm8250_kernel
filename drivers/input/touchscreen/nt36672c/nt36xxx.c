@@ -39,9 +39,6 @@
 #endif
 
 #include "nt36xxx.h"
-#ifndef NVT_SAVE_TESTDATA_IN_FILE
-#include "nt36xxx_mp_ctrlram.h"
-#endif
 #if NVT_TOUCH_ESD_PROTECT
 #include <linux/jiffies.h>
 #endif /* #if NVT_TOUCH_ESD_PROTECT */
@@ -2932,9 +2929,6 @@ static void nvt_ts_shutdown(struct platform_device *pdev)
 #endif
 #if defined(CONFIG_HAS_EARLYSUSPEND)
 	unregister_early_suspend(&ts->early_suspend);
-#endif
-#if NVT_TOUCH_MP
-	nvt_mp_proc_deinit();
 #endif
 #if NVT_TOUCH_EXT_PROC
 	nvt_extra_proc_deinit();

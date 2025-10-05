@@ -5025,8 +5025,6 @@ deinit_smmu:
 	cnss_pci_deinit_smmu(pci_priv);
 unregister_ramdump:
 	cnss_unregister_ramdump(plat_priv);
-unregister_subsys:
-	cnss_unregister_subsys(plat_priv);
 reset_ctx:
 	plat_priv->bus_priv = NULL;
 out:

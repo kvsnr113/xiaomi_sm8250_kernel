@@ -9096,7 +9096,7 @@ static int afe_get_clk_src(u16 port_id, char *clk_src)
 		return -EINVAL;
 	}
 
-	if (clkinfo_per_port[idx].clk_src_name == NULL)
+	if (!*clkinfo_per_port[idx].clk_src_name)
 		return -EINVAL;
 	strlcpy(clk_src, clkinfo_per_port[idx].clk_src_name,
 				CLK_SRC_NAME_MAX);
@@ -9417,7 +9417,7 @@ int afe_set_lpass_clock_v2(u16 port_id, struct afe_clk_set *cfg)
 		return -EINVAL;
 	}
 
-	if (clk_src_name != NULL) {
+	if (*clk_src_name) {
 		if (cfg->clk_freq_in_hz % AFE_SAMPLING_RATE_8KHZ) {
 			if (clk_src_name[CLK_SRC_FRACT] != NULL)
 				ret = afe_set_source_clk(port_id,
@@ -11280,7 +11280,7 @@ static void afe_release_uevent_data(struct kobject *kobj)
 #ifdef TFA_ADSP_SUPPORTED
 int send_tfa_cal_apr(void *buf, int cmd_size, bool bRead)
 {
-	int32_t result, port_id = AFE_PORT_ID_TFADSP_RX;
+	int32_t result = 0, port_id = AFE_PORT_ID_TFADSP_RX;
 	uint32_t port_index = 0, payload_size = 0;
 	size_t len;
 	struct rtac_cal_block_data *tfa_cal = &(this_afe.tfa_cal);

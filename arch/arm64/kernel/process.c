@@ -677,8 +677,6 @@ long get_tagged_addr_ctrl(void)
  * only prevents the tagged address ABI enabling via prctl() and does not
  * disable it for tasks that already opted in to the relaxed ABI.
  */
-static int zero;
-static int one = 1;
 
 static struct ctl_table tagged_addr_sysctl_table[] = {
 	{
