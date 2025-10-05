@@ -8,8 +8,11 @@ cd ..
 BASE_DIR="$PWD"
 cd "$KERNEL_DIR"
 
+set -eo pipefail
+trap 'errorbuild' INT TERM ERR
+
 AK3_DIR="$BASE_DIR/AnyKernel3"
-[[ ! -d "$AK3_DIR" ]] && echo -e "(X) Please Provide AnyKernel3 !" && exit 1
+[[ ! -d "$AK3_DIR" ]] && echo "!! Please Provide AnyKernel3 !!" && exit 1
 
 # Parse command line arguments
 TYPE="CI"
@@ -30,17 +33,17 @@ esac
 
 case "$*" in
     *aosp*)
-        export PATH="$BASE_DIR/aosp-clang/bin:$PATH"
+        export PATH="$BASE_DIR/toolchains/aosp-clang/bin:$PATH"
         TC="AOSP-Clang"
         ;;
     *gcc*)
-        GCC64_DIR="$BASE_DIR/gcc/gcc-arm64/bin/"
-        GCC32_DIR="$BASE_DIR/gcc/gcc-arm/bin/"
+        GCC64_DIR="$BASE_DIR/toolchains/gcc/gcc-arm64/bin/"
+        GCC32_DIR="$BASE_DIR/toolchains/gcc/gcc-arm/bin/"
         export PATH="$GCC64_DIR:$GCC32_DIR:/usr/bin:$PATH"
         TC="GCC"
         ;;
     *)
-        export PATH="$BASE_DIR/neutron-clang/bin:$PATH"
+        export PATH="$BASE_DIR/toolchains/neutron-clang/bin:$PATH"
         TC="Neutron-Clang"
         ;;
 esac
@@ -50,6 +53,7 @@ declare -A DEVICE_MAP=(
     ["munch"]="MUNCH:vendor/munch_defconfig"
     ["alioth"]="ALIOTH:vendor/alioth_defconfig"
     ["apollo"]="APOLLO:vendor/apollo_defconfig"
+    ["pipa"]="PIPA:vendor/pipa_defconfig"
     ["lmi"]="LMI:vendor/lmi_defconfig"
     ["umi"]="UMI:vendor/umi_defconfig"
     ["cmi"]="CMI:vendor/cmi_defconfig"
@@ -64,6 +68,8 @@ for device in "${!DEVICE_MAP[@]}"; do
     fi
 done
 
+[[ ! "$TARGET" ]] && echo "-- !! Please set build device target !! --" && exit 1
+
 # Set kernel image paths
 K_IMG="$KERNEL_DIR/out/arch/arm64/boot/Image"
 K_DTBO="$KERNEL_DIR/out/arch/arm64/boot/dtbo.img"
@@ -76,8 +82,8 @@ if [[ -f "$TELEGRAM_CONFIG" ]]; then
     export TOKEN="$TELEGRAM_TOKEN"
     export CHATID="$TELEGRAM_CHATID"
 else
-    echo "Warning: Telegram config file not found at $TELEGRAM_CONFIG"
-    echo "Telegram notifications will be disabled"
+    echo "-- Warning: Telegram config file not found at $TELEGRAM_CONFIG --"
+    echo "-- Telegram notifications will be disabled --"
     export TOKEN=""
     export CHATID=""
 fi
@@ -112,7 +118,7 @@ success_msg() {
     local MSG=$(cat <<EOF
 <b>Build Success !</b>
 <code>Date : $(date +"%d %b %Y, %H:%M:%S")</code>
-<code>Time : $(($TOTAL_TIME / 60))m $(($TOTAL_TIME % 60))s</code>
+<code>Time : $(($TIME_END / 60))m $(($TIME_END % 60))s</code>
 EOF
 )
     send_msg "$MSG"
@@ -132,33 +138,34 @@ send_file() {
         "https://api.telegram.org/bot$TOKEN/sendDocument" \
         -F chat_id="$CHATID" \
         -F document=@"$1" \
-        -F caption="$2" \
         -F "parse_mode=html" \
         -F "disable_web_page_preview=true"
 }
 
 clearbuild() {
-    rm -rf "$K_IMG" \
-    "$K_DTB" "$K_DTBO" \
-    "$KERNEL_DIR/out/arch/arm64/boot/dts/vendor/qcom" \
-    "$KERNEL_DIR/out/log.txt"
+    if [[ "$1" == "all" ]]; then
+        echo "-- Cleaning Out --"
+        rm -rf out/*
+    else
+        rm -rf "$KERNEL_DIR/out/arch/arm64/boot"
+    fi
 }
 
 zipbuild() {
-    echo -e "(OK) Zipping Kernel !"
+    echo "-- Zipping Kernel --"
     cd "$AK3_DIR" || exit 1
     ZIP_NAME="E404R-${TYPE}-${TARGET}-$(date "+%y%m%d").zip"
-    zip -r9 "$BASE_DIR/$ZIP_NAME" */ "${TARGET}"-* anykernel.sh -x .git README.md LICENSE
+    zip -r9 "$BASE_DIR/$ZIP_NAME" META-INF/ tools/ "${TARGET}"*-Image "${TARGET}"*-dtb "${TARGET}"*-dtbo.img anykernel.sh
     cd "$KERNEL_DIR" || exit 1
 }
 
 uploadbuild() {
-    send_file "$KERNEL_DIR/out/log.txt"
-    send_file "$BASE_DIR/$ZIP_NAME" ""
+    send_file "$BASE_DIR/compile.log"
+    send_file "$BASE_DIR/$ZIP_NAME"
     send_msg "<b>Kernel Flashable Zip Uploaded</b>"
 }
 
-setup_build_flags() {
+setupbuild() {
     if [[ $TC == *Clang* ]]; then
         BUILD_FLAGS=(
             CC="ccache clang"
@@ -198,46 +205,60 @@ setup_build_flags() {
     fi
 }
 
-setup_build_flags
+errorbuild() {
+    echo "-- !! Kernel Build Error !! --"
+    send_file "$BASE_DIR/compile.log"
+    send_msg "<b>! Kernel Build Error !</b>"
+    clearbuild
+    rm -f "$BASE_DIR/compile.log"
+    exit 1
+}
 
-compilebuild() {
-    # Show ccache configuration before build
-    echo "=== CCache Stats Before Build ==="
-    ccache -s
-    echo "================================"
-    
+compilebuild() {    
     mkdir -p $KERNEL_DIR/out
 
-    local make_flags=(-kj16 O=out "${BUILD_FLAGS[@]}")
+    local make_flags=(-j"$(nproc)" O=out "${BUILD_FLAGS[@]}")
     
     if [[ $TC == *Clang* ]]; then
-        echo "Compiling with Clang (using ccache)"
-        make "${make_flags[@]}" 2>&1 | tee -a out/log.txt
+        echo "-- Compiling with Clang --"
+        make "${make_flags[@]}" || errorbuild
     else
-        echo "Compiling with GCC"
-        make "${make_flags[@]}" 2>&1 | tee -a out/log.txt
-    fi
-
-    # Show ccache stats after build
-    echo "=== CCache Stats After Build ==="
-    ccache -s
-    echo "==============================="
-    
-    if [[ ! -e $K_IMG ]]; then
-        echo -e "(X) Kernel Build Error !"
-        send_file "$KERNEL_DIR/out/log.txt"
-        git restore "arch/arm64/configs/$DEFCONFIG"
-        send_msg "<b>! Kernel Build Error !</b>"
-        exit 1
+        echo "-- Compiling with GCC --"
+        make "${make_flags[@]}" || errorbuild
     fi
 }
 
 makebuild() {
+    # Config modifications
+    sed -i '/CONFIG_KALLSYMS=/c\CONFIG_KALLSYMS=n' out/.config
+    sed -i '/CONFIG_KALLSYMS_BASE_RELATIVE=/c\CONFIG_KALLSYMS_BASE_RELATIVE=n' out/.config
+            
+    if [[ "$1" == "SUSFS" ]]; then
+        echo "-- Compiling with SUSFS --"
+        sed -i '/CONFIG_KSU_SUSFS=/c\CONFIG_KSU_SUSFS=y' out/.config
+        export CCACHE_DIR="$BASE_DIR/ccache/.ccache_susfs"
+    else
+        echo "-- Compiling without SUSFS --"
+        sed -i '/CONFIG_KSU_SUSFS=/c\CONFIG_KSU_SUSFS=n' out/.config
+        export CCACHE_DIR="$BASE_DIR/ccache/.ccache_nosusfs"
+    fi
     compilebuild
-    cp "$K_IMG" "$AK3_DIR/${TARGET}-Image"
+    # Show ccache stats after build
+    echo "======== CCache Stats =========="
+    ccache -p | grep cache_dir
+    ccache -s
+    echo "================================"
+
+    echo "-- Copying files to AnyKernel3 --"
+    rm -f "$AK3_DIR/${TARGET}-$1-Image"
+    rm -f "$AK3_DIR/${TARGET}-dtbo.img"
+    rm -f "$AK3_DIR/${TARGET}-dtb"
+    cp "$K_IMG" "$AK3_DIR/${TARGET}-$1-Image"
     cp "$K_DTBO" "$AK3_DIR/${TARGET}-dtbo.img"
     cp "$K_DTB" "$AK3_DIR/${TARGET}-dtb"
 }
+
+setupbuild
 
 # Main menu
 while true; do
@@ -248,54 +269,55 @@ while true; do
     echo " ║ 2. Start Build                     ║"
     echo " ║ 3. Send File                       ║"
     echo " ║ f. Clean Out Directory             ║"
+    echo " ║ fc. Clean Ccache                   ║"
     echo " ║ e. Exit                            ║"
     echo " ╚════════════════════════════════════╝"
-    echo -n " Enter your choice: "
+    echo -n " Enter your choice : "
     read -r menu
     
     case "$menu" in
         1)
             make O=out "$DEFCONFIG"
-            echo -e "(OK) Exported $DEFCONFIG to Out Dir !"
+            echo "-- Exported $DEFCONFIG to Out Dir --"
             ;;
         2)
-            START="$(date +"%s")"
-            
-            # Config modifications
-            sed -i '/CONFIG_KALLSYMS=/c\CONFIG_KALLSYMS=n' out/.config
-            sed -i '/CONFIG_KALLSYMS_BASE_RELATIVE=/c\CONFIG_KALLSYMS_BASE_RELATIVE=n' out/.config
-            sed -i '/CONFIG_E404_OPLUS/c\CONFIG_E404_OPLUS=y' out/.config
-            
-            # LTO configuration
-            if [[ "$TC" == *GCC* ]]; then
-                sed -i '/CONFIG_LTO_NONE/c\CONFIG_LTO_NONE=y' out/.config
-                sed -i '/CONFIG_LTO=/c\CONFIG_LTO=n' out/.config
-                sed -i '/CONFIG_LTO_CLANG=/c\# CONFIG_LTO_CLANG is not set' out/.config
-                sed -i '/CONFIG_LTO_CLANG_THIN/c\# CONFIG_LTO_CLANG_THIN is not set' out/.config
-                sed -i '/CONFIG_LTO_CLANG_FULL/c\# CONFIG_LTO_CLANG_FULL is not set' out/.config
-            fi
+            TIME_START="$(date +"%s")"
 
             build_msg
-            makebuild
-            zipbuild
 
-            TOTAL_TIME=$(("$(date +"%s")" - "$START"))
-            success_msg
-            uploadbuild
             clearbuild
+
+            makebuild "SUSFS" 2>&1 | tee -a "$BASE_DIR/compile.log"
+
+            clearbuild
+
+            makebuild "NOSUSFS" 2>&1 | tee -a "$BASE_DIR/compile.log"
+
+            zipbuild
+            
+            uploadbuild
+
+            rm -f "$BASE_DIR/compile.log"
+
+            TIME_END=$(("$(date +"%s")" - "$TIME_START"))
+
+            success_msg
             ;;
         3)
-            echo -e "(OK) Sending to Telegram"
-            send_file "$BASE_DIR/*E404*.zip" ""
+            echo "-- Sending to Telegram --"
+            send_file "$BASE_DIR/*E404*.zip"
             ;;
         f)
-            rm -rf out
+            clearbuild "all"
+            ;;
+        fc)
+            rm -rf "$BASE_DIR/ccache"
             ;;
         e)
             exit 0
             ;;
         *)
-            echo "Invalid option!"
+            echo "-- !! Invalid option !! --"
             ;;
     esac
 done
