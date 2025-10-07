@@ -268,6 +268,7 @@ while true; do
     echo " ║ 1. Export Defconfig                ║"
     echo " ║ 2. Start Build                     ║"
     echo " ║ 3. Send File                       ║"
+    echo " ║ 4. Repack Last Build               ║"
     echo " ║ f. Clean Out Directory             ║"
     echo " ║ fc. Clean Ccache                   ║"
     echo " ║ e. Exit                            ║"
@@ -282,30 +283,24 @@ while true; do
             ;;
         2)
             TIME_START="$(date +"%s")"
-
             build_msg
-
             clearbuild
-
             makebuild "SUSFS" 2>&1 | tee -a "$BASE_DIR/compile.log"
-
             clearbuild
-
             makebuild "NOSUSFS" 2>&1 | tee -a "$BASE_DIR/compile.log"
-
             zipbuild
-            
             uploadbuild
-
             rm -f "$BASE_DIR/compile.log"
-
             TIME_END=$(("$(date +"%s")" - "$TIME_START"))
-
             success_msg
             ;;
         3)
             echo "-- Sending to Telegram --"
-            send_file "$BASE_DIR/*E404*.zip"
+            send_file "$BASE_DIR/$ZIP_NAME"
+            ;;
+        4)
+            zipbuild
+            send_file "$BASE_DIR/$ZIP_NAME"
             ;;
         f)
             clearbuild "all"
