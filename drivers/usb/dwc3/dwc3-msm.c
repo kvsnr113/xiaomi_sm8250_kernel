@@ -46,6 +46,9 @@
 #include "dbm.h"
 #include "debug.h"
 #include "xhci.h"
+#if defined(CONFIG_BOARD_DAGU) || !defined(CONFIG_NO_PS_USB3)
+#include "../pd/ps5169.h"
+#endif
 
 static bool bc12_compliance;
 module_param(bc12_compliance, bool, 0644);
@@ -65,6 +68,12 @@ MODULE_PARM_DESC(bc12_compliance, "Disable sending dp pulse for CDP");
 /* XHCI registers */
 #define USB3_HCSPARAMS1		(0x4)
 #define USB3_PORTSC		(0x420)
+
+#if defined(CONFIG_BOARD_PIPA) || defined(CONFIG_MACH_XIAOMI_PIPA)
+#define DWC3_LLUCTL    0xd024
+/* Force Gen1 speed on Gen2 link */
+#define DWC3_LLUCTL_FORCE_GEN1 BIT(10)
+#endif
 
 /**
  *  USB QSCRATCH Hardware registers
@@ -301,6 +310,7 @@ struct dwc3_msm {
 	struct workqueue_struct *dwc3_wq;
 	struct workqueue_struct *sm_usb_wq;
 	struct delayed_work	sm_work;
+	struct delayed_work	rst_work;
 	unsigned long		inputs;
 	unsigned int		max_power;
 	bool			charging_disabled;
@@ -363,6 +373,9 @@ struct dwc3_msm {
 	dma_addr_t		dummy_gsi_db_dma;
 	int			orientation_override;
 	bool			usb_data_enabled;
+#if defined(CONFIG_BOARD_PIPA) || defined(CONFIG_MACH_XIAOMI_PIPA)
+	bool			force_gen1;
+#endif
 };
 
 #define USB_HSPHY_3P3_VOL_MIN		3050000 /* uV */
@@ -383,6 +396,8 @@ static void dwc3_msm_notify_event(struct dwc3 *dwc, unsigned int event,
 						unsigned int value);
 static int dwc3_usb_blocking_sync(struct notifier_block *nb,
 					unsigned long event, void *ptr);
+static int dwc3_otg_start_host(struct dwc3_msm *mdwc, int on);
+static struct delayed_work *rst_work;
 
 /**
  *
@@ -505,10 +520,23 @@ static inline bool dwc3_msm_is_dev_superspeed(struct dwc3_msm *mdwc)
 
 static inline bool dwc3_msm_is_superspeed(struct dwc3_msm *mdwc)
 {
-	if (mdwc->in_host_mode)
-		return dwc3_msm_is_host_superspeed(mdwc);
+	int ret = 0;
+	if (!mdwc) {
+		pr_err("the data is null \n");
+		return 0;
+	}
+	if (mdwc->in_host_mode) {
+		ret = dwc3_msm_is_host_superspeed(mdwc);
+		dev_info(mdwc->dev, "%s: host SS:%d.\n", __func__,ret);
+	} else if (mdwc->in_device_mode) {
+		ret =  dwc3_msm_is_dev_superspeed(mdwc);
+		dev_info(mdwc->dev, "%s: device SS:%d.\n", __func__, ret);
+	} else {
+		dev_info(mdwc->dev, "%s: Null Insert.\n", __func__);
+		return 0;
+	}
 
-	return dwc3_msm_is_dev_superspeed(mdwc);
+	return ret;
 }
 
 static int dwc3_msm_dbm_disable_updxfer(struct dwc3 *dwc, u8 usb_ep)
@@ -2005,6 +2033,24 @@ static void dwc3_gsi_event_buf_alloc(struct dwc3 *dwc)
 	}
 }
 
+static void dwc3_msm_modify_pipectl(struct dwc3 *dwc, bool set)
+{
+	struct dwc3_msm *mdwc = dev_get_drvdata(dwc->dev->parent);
+	u32 reg;
+
+	reg = dwc3_msm_read_reg(mdwc->base, DWC3_GUSB3PIPECTL(0));
+
+	if (set) {
+		if ((dwc->speed != DWC3_DSTS_SUPERSPEED) &&
+			(dwc->speed != DWC3_DSTS_SUPERSPEED_PLUS))
+			reg |= DWC3_GUSB3PIPECTL_SUSPHY;
+	} else {
+		reg &= ~(DWC3_GUSB3PIPECTL_SUSPHY);
+	}
+
+	dwc3_msm_write_reg(mdwc->base, DWC3_GUSB3PIPECTL(0), reg);
+}
+
 static void dwc3_msm_notify_event(struct dwc3 *dwc, unsigned int event,
 							unsigned int value)
 {
@@ -2070,6 +2116,9 @@ static void dwc3_msm_notify_event(struct dwc3 *dwc, unsigned int event,
 		break;
 	case DWC3_CONTROLLER_CONNDONE_EVENT:
 		dev_dbg(mdwc->dev, "DWC3_CONTROLLER_CONNDONE_EVENT received\n");
+
+		dwc3_msm_modify_pipectl(dwc, true);
+
 		/*
 		 * Add power event if the dbm indicates coming out of L1 by
 		 * interrupt
@@ -2194,6 +2243,13 @@ static void dwc3_msm_notify_event(struct dwc3 *dwc, unsigned int event,
 		break;
 	case DWC3_CONTROLLER_NOTIFY_CLEAR_DB:
 		dev_dbg(mdwc->dev, "DWC3_CONTROLLER_NOTIFY_CLEAR_DB\n");
+
+		/*
+		 * Clear the susphy bit here to ensure it is not set during
+		 * the course of controller initialisation process.
+		 */
+		dwc3_msm_modify_pipectl(dwc, false);
+
 		if (!mdwc->gsi_ev_buff)
 			break;
 
@@ -2266,15 +2322,6 @@ static void dwc3_msm_power_collapse_por(struct dwc3_msm *mdwc)
 		dev_err(mdwc->dev, "%s: dwc3_core init failed (%d)\n",
 							__func__, ret);
 
-	/* Get initial P3 status and enable IN_P3 event */
-	if (dwc3_is_usb31(dwc))
-		val = dwc3_msm_read_reg_field(mdwc->base,
-			DWC31_LINK_GDBGLTSSM,
-			DWC3_GDBGLTSSM_LINKSTATE_MASK);
-	else
-		val = dwc3_msm_read_reg_field(mdwc->base,
-			DWC3_GDBGLTSSM, DWC3_GDBGLTSSM_LINKSTATE_MASK);
-	atomic_set(&mdwc->in_p3, val == DWC3_LINK_STATE_U3);
 	dwc3_msm_write_reg_field(mdwc->base, PWR_EVNT_IRQ_MASK_REG,
 				PWR_EVNT_POWERDOWN_IN_P3_MASK, 1);
 
@@ -2284,6 +2331,11 @@ static void dwc3_msm_power_collapse_por(struct dwc3_msm *mdwc)
 		dwc3_en_sleep_mode(dwc);
 	}
 
+#if defined(CONFIG_BOARD_PIPA) || defined(CONFIG_MACH_XIAOMI_PIPA)
+	/* Force Gen1 speed on Gen2 controller if required */
+	if (mdwc->force_gen1)
+		 dwc3_msm_write_reg_field(mdwc->base, DWC3_LLUCTL,  DWC3_LLUCTL_FORCE_GEN1, 1);
+#endif
 }
 
 static int dwc3_msm_prepare_suspend(struct dwc3_msm *mdwc)
@@ -3594,6 +3646,26 @@ static ssize_t speed_store(struct device *dev, struct device_attribute *attr,
 }
 static DEVICE_ATTR_RW(speed);
 
+static ssize_t super_speed_show(struct device *dev,
+				struct device_attribute *attr,
+				char *buf)
+{
+	int ret = 0;
+	struct dwc3_msm *mdwc = dev_get_drvdata(dev);
+
+	ret = dwc3_msm_is_superspeed(mdwc);
+	pr_err("super speed value: %d \n", ret);
+	return snprintf(buf, PAGE_SIZE, "%s\n", ret ? "true" : "false");
+}
+
+static ssize_t super_speed_store(struct device *dev,
+				 struct device_attribute *attr,
+				 const char *buf, size_t count)
+{
+	return 0;
+}
+static DEVICE_ATTR_RW(super_speed);
+
 static ssize_t usb_compliance_mode_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -3700,6 +3772,46 @@ static int dwc_dpdm_cb(struct notifier_block *nb, unsigned long evt, void *p)
 	}
 
 	return NOTIFY_OK;
+}
+
+void usb_reset_host(void)
+{
+	struct dwc3_msm *mdwc = container_of(rst_work, struct dwc3_msm, rst_work);
+	if (rst_work != NULL)
+		queue_delayed_work(mdwc->sm_usb_wq, rst_work, 0);
+}
+
+EXPORT_SYMBOL(usb_reset_host);
+
+static void usb_reset_work(struct work_struct *w)
+{
+	int ret = 0;
+	struct dwc3_msm *mdwc = container_of(w, struct dwc3_msm, rst_work.work);
+	char * usb1_port = "a800000.ssusb";
+	char *p;
+
+	if (mdwc==NULL) {
+		pr_err("%s: mdwc is null!", __func__);
+		return;
+	}
+
+	p = strstr((char *) mdwc->dev->kobj.name, usb1_port);
+	if (p != 0) {
+		dev_dbg(mdwc->dev, "%s: reset a800000.ssusb host!\n", __func__);
+		ret = dwc3_otg_start_host(mdwc, 0);
+		dev_dbg(mdwc->dev, "turn off dwc3_otg_start_host\n");
+		if (ret < 0) {
+			dev_err(mdwc->dev, "%s: start_host state off failed!\n", __func__);
+			return;
+		}
+		ssleep(2);
+		ret = dwc3_otg_start_host(mdwc, 1);
+		dev_dbg(mdwc->dev, "turn on dwc3_otg_start_host\n");
+		if (ret < 0) {
+			dev_err(mdwc->dev, "%s: start_host state on failed!\n", __func__);
+			return;
+		}
+	}
 }
 
 static ssize_t usb_data_enabled_show(struct device *dev,
@@ -3985,6 +4097,11 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 		if (mdwc->default_bus_vote >=
 				mdwc->bus_scale_table->num_usecases)
 			mdwc->default_bus_vote = BUS_VOTE_NOMINAL;
+		if (strstr(mdwc->bus_scale_table->name, "usb1")) {
+			dev_dbg(&pdev->dev, "%s: USB1 Init RST workqueue!\n", __func__);
+			INIT_DELAYED_WORK(&mdwc->rst_work, usb_reset_work);
+			rst_work = &mdwc->rst_work;
+		}
 	}
 
 	dwc = platform_get_drvdata(mdwc->dwc3);
@@ -4041,6 +4158,10 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	}
 
 	mutex_init(&mdwc->suspend_resume_mutex);
+
+#if defined(CONFIG_BOARD_PIPA) || defined(CONFIG_MACH_XIAOMI_PIPA)
+	mdwc->force_gen1 = of_property_read_bool(node, "qcom,force-gen1");
+#endif
 
 	/* set the initial value */
 	mdwc->usb_data_enabled = true;
@@ -4108,6 +4229,7 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	device_create_file(&pdev->dev, &dev_attr_orientation);
 	device_create_file(&pdev->dev, &dev_attr_mode);
 	device_create_file(&pdev->dev, &dev_attr_speed);
+	device_create_file(&pdev->dev, &dev_attr_super_speed);
 	device_create_file(&pdev->dev, &dev_attr_usb_compliance_mode);
 	device_create_file(&pdev->dev, &dev_attr_bus_vote);
 	device_create_file(&pdev->dev, &dev_attr_usb_data_enabled);
@@ -4296,6 +4418,10 @@ static void msm_dwc3_perf_vote_work(struct work_struct *w)
 			msecs_to_jiffies(1000 * PM_QOS_SAMPLE_SEC));
 }
 
+#if defined(CONFIG_BOARD_DAGU) || !defined(CONFIG_NO_PS_USB3)
+extern bool has_dp_flag;
+#endif
+
 #define VBUS_REG_CHECK_DELAY	(msecs_to_jiffies(1000))
 
 /**
@@ -4413,6 +4539,12 @@ static int dwc3_otg_start_host(struct dwc3_msm *mdwc, int on)
 		msm_dwc3_perf_vote_update(mdwc, true);
 		schedule_delayed_work(&mdwc->perf_vote_work,
 				msecs_to_jiffies(1000 * PM_QOS_SAMPLE_SEC));
+
+#if defined(CONFIG_BOARD_DAGU) && !defined(CONFIG_NO_PS_USB3)
+		if (!has_dp_flag)
+			ps5169_cfg_usb();
+#endif
+
 	} else {
 		dev_dbg(mdwc->dev, "%s: turn off host\n", __func__);
 
@@ -4532,6 +4664,12 @@ static int dwc3_otg_start_peripheral(struct dwc3_msm *mdwc, int on)
 		msm_dwc3_perf_vote_update(mdwc, true);
 		schedule_delayed_work(&mdwc->perf_vote_work,
 				msecs_to_jiffies(1000 * PM_QOS_SAMPLE_SEC));
+
+#if defined(CONFIG_BOARD_DAGU) && !defined(CONFIG_NO_PS_USB3)
+		if (!has_dp_flag)
+			ps5169_cfg_usb();
+#endif
+
 	} else {
 		dev_dbg(mdwc->dev, "%s: turn off gadget %s\n",
 					__func__, dwc->gadget.name);
