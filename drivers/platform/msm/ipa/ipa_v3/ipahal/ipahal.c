@@ -1753,7 +1753,7 @@ int ipahal_init(enum ipa_hw_type ipa_hw_type, void __iomem *base,
 	ipahal_ctx->regdumpbuf = ipc_log_context_create(IPAHAL_IPC_LOG_PAGES,
 		"ipa_regs", 0);
 	if (ipahal_ctx->regdumpbuf == NULL)
-		IPAHAL_ERR("failed to create IPA regdump log, continue...\n");
+		IPAHAL_DBG("failed to create IPA regdump log, continue...\n");
 
 	ipahal_debugfs_init();
 

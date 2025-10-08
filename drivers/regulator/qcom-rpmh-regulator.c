@@ -423,7 +423,7 @@ static int rpmh_regulator_init_vreg(struct rpmh_vreg *vreg, struct device *dev,
 
 	vreg->addr = cmd_db_read_addr(rpmh_resource_name);
 	if (!vreg->addr) {
-		dev_err(dev, "%s: could not find RPMh address for resource %s\n",
+		dev_dbg(dev, "%s: could not find RPMh address for resource %s\n",
 			node->name, rpmh_resource_name);
 		return -ENODEV;
 	}

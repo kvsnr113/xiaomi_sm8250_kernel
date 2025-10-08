@@ -847,7 +847,7 @@ int smb5_config_iterm(struct smb_charger *chg, int hi_thresh, int low_thresh)
 	 *	raw (A) = (scaled_mA * ADC_CHG_TERM_MASK) / (10 * 1000)
 	 * Note: raw needs to be converted to big-endian format.
 	 */
-	dev_err(chg->dev, "configure ADC_ITERM_CFG hi_thresh=%d,low_thresh:%d\n",hi_thresh,low_thresh);
+	dev_dbg(chg->dev, "configure ADC_ITERM_CFG hi_thresh=%d,low_thresh:%d\n",hi_thresh,low_thresh);
 	if (hi_thresh) {
 		raw_hi_thresh = ((hi_thresh * ADC_CHG_TERM_MASK) / 10000);
 		raw_hi_thresh = sign_extend32(raw_hi_thresh, 15);
