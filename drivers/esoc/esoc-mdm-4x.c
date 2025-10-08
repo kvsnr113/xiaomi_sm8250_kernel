@@ -1269,7 +1269,7 @@ static int mdm_probe(struct platform_device *pdev)
 
 	ipc_log = ipc_log_context_create(ESOC_MDM_IPC_PAGES, "esoc-mdm", 0);
 	if (!ipc_log)
-		dev_err(&pdev->dev, "Failed to setup IPC logging\n");
+		dev_dbg(&pdev->dev, "Failed to setup IPC logging\n");
 
 	ret = mdm_ops->config_hw(mdm, mdm_ops, pdev);
 	if (ret)

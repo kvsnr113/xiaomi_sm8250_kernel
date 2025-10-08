@@ -3554,7 +3554,7 @@ static int fastrpc_rpmsg_probe(struct rpmsg_device *rpdev)
 			ipc_log_context_create(FASTRPC_GLINK_LOG_PAGES,
 				gcinfo[cid].name, 0);
 	if (!gcinfo[cid].ipc_log_ctx)
-		pr_warn("adsprpc: %s: failed to create IPC log context for %s\n",
+		pr_debug("adsprpc: %s: failed to create IPC log context for %s\n",
 			__func__, gcinfo[cid].subsys);
 	else
 		pr_info("adsprpc: %s: enabled IPC logging for %s\n",
