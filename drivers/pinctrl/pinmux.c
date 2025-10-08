@@ -327,7 +327,7 @@ int pinmux_map_to_setting(const struct pinctrl_map *map,
 
 	ret = pinmux_func_name_to_selector(pctldev, map->data.mux.function);
 	if (ret < 0) {
-		dev_err(pctldev->dev, "invalid function %s in map table\n",
+		dev_dbg(pctldev->dev, "invalid function %s in map table\n",
 			map->data.mux.function);
 		return ret;
 	}

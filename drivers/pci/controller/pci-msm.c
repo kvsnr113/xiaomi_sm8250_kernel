@@ -3348,7 +3348,7 @@ static int msm_pcie_get_reg(struct msm_pcie_dev_t *pcie_dev)
 		res = platform_get_resource_byname(pcie_dev->pdev,
 						IORESOURCE_MEM, res_info->name);
 		if (!res) {
-			PCIE_ERR(pcie_dev,
+			PCIE_DBG(pcie_dev,
 				"PCIe: RC%d: no %s resource found.\n",
 				pcie_dev->rc_idx, res_info->name);
 		} else {
