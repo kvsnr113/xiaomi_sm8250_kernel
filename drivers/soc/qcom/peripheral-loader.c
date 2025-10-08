@@ -1560,7 +1560,7 @@ int pil_desc_init(struct pil_desc *desc)
 	}
 	if (of_property_read_u32(ofnode, "qcom,minidump-id",
 		&desc->minidump_id))
-		pr_err("minidump-id not found for %s\n", desc->name);
+		pr_debug("minidump-id not found for %s\n", desc->name);
 	else {
 		if (g_md_toc && g_md_toc->md_toc_init == true) {
 			ss_toc_addr = &g_md_toc->md_ss_toc[desc->minidump_id];
