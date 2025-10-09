@@ -183,7 +183,6 @@ enum wl_type_t {
 };
 
 struct cfqg_stats {
-#ifdef CONFIG_CFQ_GROUP_IOSCHED
 	/* number of ios merged */
 	struct blkg_rwstat		merged;
 	/* total time spent on device in ns, may not be accurate w/ queueing */
@@ -194,28 +193,6 @@ struct cfqg_stats {
 	struct blkg_rwstat		queued;
 	/* total disk time and nr sectors dispatched by this group */
 	struct blkg_stat		time;
-#ifdef CONFIG_DEBUG_BLK_CGROUP
-	/* time not charged to this cgroup */
-	struct blkg_stat		unaccounted_time;
-	/* sum of number of ios queued across all samples */
-	struct blkg_stat		avg_queue_size_sum;
-	/* count of samples taken for average */
-	struct blkg_stat		avg_queue_size_samples;
-	/* how many times this group has been removed from service tree */
-	struct blkg_stat		dequeue;
-	/* total time spent waiting for it to be assigned a timeslice. */
-	struct blkg_stat		group_wait_time;
-	/* time spent idling for this blkcg_gq */
-	struct blkg_stat		idle_time;
-	/* total time with empty current active q with other requests queued */
-	struct blkg_stat		empty_time;
-	/* fields after this shouldn't be cleared on stat reset */
-	u64				start_group_wait_time;
-	u64				start_idle_time;
-	u64				start_empty_time;
-	uint16_t			flags;
-#endif	/* CONFIG_DEBUG_BLK_CGROUP */
-#endif	/* CONFIG_CFQ_GROUP_IOSCHED */
 };
 
 /* Per-cgroup data */
@@ -319,9 +296,7 @@ struct cfq_io_cq {
 	struct cfq_queue	*cfqq[2];
 	struct cfq_ttime	ttime;
 	int			ioprio;		/* the current ioprio */
-#ifdef CONFIG_CFQ_GROUP_IOSCHED
 	uint64_t		blkcg_serial_nr; /* the current blkcg serial */
-#endif
 };
 
 /*
@@ -462,149 +437,6 @@ CFQ_CFQQ_FNS(deep);
 CFQ_CFQQ_FNS(wait_busy);
 #undef CFQ_CFQQ_FNS
 
-#if defined(CONFIG_CFQ_GROUP_IOSCHED) && defined(CONFIG_DEBUG_BLK_CGROUP)
-
-/* cfqg stats flags */
-enum cfqg_stats_flags {
-	CFQG_stats_waiting = 0,
-	CFQG_stats_idling,
-	CFQG_stats_empty,
-};
-
-#define CFQG_FLAG_FNS(name)						\
-static inline void cfqg_stats_mark_##name(struct cfqg_stats *stats)	\
-{									\
-	stats->flags |= (1 << CFQG_stats_##name);			\
-}									\
-static inline void cfqg_stats_clear_##name(struct cfqg_stats *stats)	\
-{									\
-	stats->flags &= ~(1 << CFQG_stats_##name);			\
-}									\
-static inline int cfqg_stats_##name(struct cfqg_stats *stats)		\
-{									\
-	return (stats->flags & (1 << CFQG_stats_##name)) != 0;		\
-}									\
-
-CFQG_FLAG_FNS(waiting)
-CFQG_FLAG_FNS(idling)
-CFQG_FLAG_FNS(empty)
-#undef CFQG_FLAG_FNS
-
-/* This should be called with the queue_lock held. */
-static void cfqg_stats_update_group_wait_time(struct cfqg_stats *stats)
-{
-	u64 now;
-
-	if (!cfqg_stats_waiting(stats))
-		return;
-
-	now = ktime_get_ns();
-	if (now > stats->start_group_wait_time)
-		blkg_stat_add(&stats->group_wait_time,
-			      now - stats->start_group_wait_time);
-	cfqg_stats_clear_waiting(stats);
-}
-
-/* This should be called with the queue_lock held. */
-static void cfqg_stats_set_start_group_wait_time(struct cfq_group *cfqg,
-						 struct cfq_group *curr_cfqg)
-{
-	struct cfqg_stats *stats = &cfqg->stats;
-
-	if (cfqg_stats_waiting(stats))
-		return;
-	if (cfqg == curr_cfqg)
-		return;
-	stats->start_group_wait_time = ktime_get_ns();
-	cfqg_stats_mark_waiting(stats);
-}
-
-/* This should be called with the queue_lock held. */
-static void cfqg_stats_end_empty_time(struct cfqg_stats *stats)
-{
-	u64 now;
-
-	if (!cfqg_stats_empty(stats))
-		return;
-
-	now = ktime_get_ns();
-	if (now > stats->start_empty_time)
-		blkg_stat_add(&stats->empty_time,
-			      now - stats->start_empty_time);
-	cfqg_stats_clear_empty(stats);
-}
-
-static void cfqg_stats_update_dequeue(struct cfq_group *cfqg)
-{
-	blkg_stat_add(&cfqg->stats.dequeue, 1);
-}
-
-static void cfqg_stats_set_start_empty_time(struct cfq_group *cfqg)
-{
-	struct cfqg_stats *stats = &cfqg->stats;
-
-	if (blkg_rwstat_total(&stats->queued))
-		return;
-
-	/*
-	 * group is already marked empty. This can happen if cfqq got new
-	 * request in parent group and moved to this group while being added
-	 * to service tree. Just ignore the event and move on.
-	 */
-	if (cfqg_stats_empty(stats))
-		return;
-
-	stats->start_empty_time = ktime_get_ns();
-	cfqg_stats_mark_empty(stats);
-}
-
-static void cfqg_stats_update_idle_time(struct cfq_group *cfqg)
-{
-	struct cfqg_stats *stats = &cfqg->stats;
-
-	if (cfqg_stats_idling(stats)) {
-		u64 now = ktime_get_ns();
-
-		if (now > stats->start_idle_time)
-			blkg_stat_add(&stats->idle_time,
-				      now - stats->start_idle_time);
-		cfqg_stats_clear_idling(stats);
-	}
-}
-
-static void cfqg_stats_set_start_idle_time(struct cfq_group *cfqg)
-{
-	struct cfqg_stats *stats = &cfqg->stats;
-
-	BUG_ON(cfqg_stats_idling(stats));
-
-	stats->start_idle_time = ktime_get_ns();
-	cfqg_stats_mark_idling(stats);
-}
-
-static void cfqg_stats_update_avg_queue_size(struct cfq_group *cfqg)
-{
-	struct cfqg_stats *stats = &cfqg->stats;
-
-	blkg_stat_add(&stats->avg_queue_size_sum,
-		      blkg_rwstat_total(&stats->queued));
-	blkg_stat_add(&stats->avg_queue_size_samples, 1);
-	cfqg_stats_update_group_wait_time(stats);
-}
-
-#else	/* CONFIG_CFQ_GROUP_IOSCHED && CONFIG_DEBUG_BLK_CGROUP */
-
-static inline void cfqg_stats_set_start_group_wait_time(struct cfq_group *cfqg, struct cfq_group *curr_cfqg) { }
-static inline void cfqg_stats_end_empty_time(struct cfqg_stats *stats) { }
-static inline void cfqg_stats_update_dequeue(struct cfq_group *cfqg) { }
-static inline void cfqg_stats_set_start_empty_time(struct cfq_group *cfqg) { }
-static inline void cfqg_stats_update_idle_time(struct cfq_group *cfqg) { }
-static inline void cfqg_stats_set_start_idle_time(struct cfq_group *cfqg) { }
-static inline void cfqg_stats_update_avg_queue_size(struct cfq_group *cfqg) { }
-
-#endif	/* CONFIG_CFQ_GROUP_IOSCHED && CONFIG_DEBUG_BLK_CGROUP */
-
-#ifdef CONFIG_CFQ_GROUP_IOSCHED
 
 static inline struct cfq_group *pd_to_cfqg(struct blkg_policy_data *pd)
 {
@@ -667,17 +499,12 @@ static inline void cfqg_stats_update_io_add(struct cfq_group *cfqg,
 					    unsigned int op)
 {
 	blkg_rwstat_add(&cfqg->stats.queued, op, 1);
-	cfqg_stats_end_empty_time(&cfqg->stats);
-	cfqg_stats_set_start_group_wait_time(cfqg, curr_cfqg);
 }
 
 static inline void cfqg_stats_update_timeslice_used(struct cfq_group *cfqg,
 			uint64_t time, unsigned long unaccounted_time)
 {
 	blkg_stat_add(&cfqg->stats.time, time);
-#ifdef CONFIG_DEBUG_BLK_CGROUP
-	blkg_stat_add(&cfqg->stats.unaccounted_time, unaccounted_time);
-#endif
 }
 
 static inline void cfqg_stats_update_io_remove(struct cfq_group *cfqg,
@@ -716,15 +543,6 @@ static void cfqg_stats_reset(struct cfqg_stats *stats)
 	blkg_rwstat_reset(&stats->service_time);
 	blkg_rwstat_reset(&stats->wait_time);
 	blkg_stat_reset(&stats->time);
-#ifdef CONFIG_DEBUG_BLK_CGROUP
-	blkg_stat_reset(&stats->unaccounted_time);
-	blkg_stat_reset(&stats->avg_queue_size_sum);
-	blkg_stat_reset(&stats->avg_queue_size_samples);
-	blkg_stat_reset(&stats->dequeue);
-	blkg_stat_reset(&stats->group_wait_time);
-	blkg_stat_reset(&stats->idle_time);
-	blkg_stat_reset(&stats->empty_time);
-#endif
 }
 
 /* @to += @from */
@@ -735,15 +553,6 @@ static void cfqg_stats_add_aux(struct cfqg_stats *to, struct cfqg_stats *from)
 	blkg_rwstat_add_aux(&to->service_time, &from->service_time);
 	blkg_rwstat_add_aux(&to->wait_time, &from->wait_time);
 	blkg_stat_add_aux(&from->time, &from->time);
-#ifdef CONFIG_DEBUG_BLK_CGROUP
-	blkg_stat_add_aux(&to->unaccounted_time, &from->unaccounted_time);
-	blkg_stat_add_aux(&to->avg_queue_size_sum, &from->avg_queue_size_sum);
-	blkg_stat_add_aux(&to->avg_queue_size_samples, &from->avg_queue_size_samples);
-	blkg_stat_add_aux(&to->dequeue, &from->dequeue);
-	blkg_stat_add_aux(&to->group_wait_time, &from->group_wait_time);
-	blkg_stat_add_aux(&to->idle_time, &from->idle_time);
-	blkg_stat_add_aux(&to->empty_time, &from->empty_time);
-#endif
 }
 
 /*
@@ -764,47 +573,12 @@ static void cfqg_stats_xfer_dead(struct cfq_group *cfqg)
 	cfqg_stats_reset(&cfqg->stats);
 }
 
-#else	/* CONFIG_CFQ_GROUP_IOSCHED */
-
-static inline struct cfq_group *cfqg_parent(struct cfq_group *cfqg) { return NULL; }
-static inline bool cfqg_is_descendant(struct cfq_group *cfqg,
-				      struct cfq_group *ancestor)
-{
-	return true;
-}
-static inline void cfqg_get(struct cfq_group *cfqg) { }
-static inline void cfqg_put(struct cfq_group *cfqg) { }
-
-#define cfq_log_cfqq(cfqd, cfqq, fmt, args...)	\
-	blk_add_trace_msg((cfqd)->queue, "cfq%d%c%c " fmt, (cfqq)->pid,	\
-			cfq_cfqq_sync((cfqq)) ? 'S' : 'A',		\
-			cfqq_type((cfqq)) == SYNC_NOIDLE_WORKLOAD ? 'N' : ' ',\
-				##args)
-#define cfq_log_cfqg(cfqd, cfqg, fmt, args...)		do {} while (0)
-
-static inline void cfqg_stats_update_io_add(struct cfq_group *cfqg,
-			struct cfq_group *curr_cfqg, unsigned int op) { }
-static inline void cfqg_stats_update_timeslice_used(struct cfq_group *cfqg,
-			uint64_t time, unsigned long unaccounted_time) { }
-static inline void cfqg_stats_update_io_remove(struct cfq_group *cfqg,
-			unsigned int op) { }
-static inline void cfqg_stats_update_io_merged(struct cfq_group *cfqg,
-			unsigned int op) { }
-static inline void cfqg_stats_update_completion(struct cfq_group *cfqg,
-						u64 start_time_ns,
-						u64 io_start_time_ns,
-						unsigned int op) { }
-
-#endif	/* CONFIG_CFQ_GROUP_IOSCHED */
-
 static inline u64 get_group_idle(struct cfq_data *cfqd)
 {
-#ifdef CONFIG_CFQ_GROUP_IOSCHED
 	struct cfq_queue *cfqq = cfqd->active_queue;
 
 	if (cfqq && cfqq->cfqg)
 		return cfqq->cfqg->group_idle;
-#endif
 	return cfqd->cfq_group_idle;
 }
 
@@ -1425,7 +1199,6 @@ cfq_group_notify_queue_del(struct cfq_data *cfqd, struct cfq_group *cfqg)
 	cfq_log_cfqg(cfqd, cfqg, "del_from_rr group");
 	cfq_group_service_tree_del(st, cfqg);
 	cfqg->saved_wl_slice = 0;
-	cfqg_stats_update_dequeue(cfqg);
 }
 
 static inline u64 cfq_cfqq_slice_usage(struct cfq_queue *cfqq,
@@ -1505,7 +1278,6 @@ static void cfq_group_served(struct cfq_data *cfqd, struct cfq_group *cfqg,
 		     used_sl, cfqq->slice_dispatch, charge,
 		     iops_mode(cfqd), cfqq->nr_sectors);
 	cfqg_stats_update_timeslice_used(cfqg, used_sl, unaccounted_sl);
-	cfqg_stats_set_start_empty_time(cfqg);
 }
 
 /**
@@ -1527,7 +1299,6 @@ static void cfq_init_cfqg_base(struct cfq_group *cfqg)
 	cfqg->ttime.last_end_request = ktime_get_ns();
 }
 
-#ifdef CONFIG_CFQ_GROUP_IOSCHED
 static int __cfq_set_weight(struct cgroup_subsys_state *css, u64 val,
 			    bool on_dfl, bool reset_dev, bool is_leaf_weight);
 
@@ -1538,15 +1309,6 @@ static void cfqg_stats_exit(struct cfqg_stats *stats)
 	blkg_rwstat_exit(&stats->wait_time);
 	blkg_rwstat_exit(&stats->queued);
 	blkg_stat_exit(&stats->time);
-#ifdef CONFIG_DEBUG_BLK_CGROUP
-	blkg_stat_exit(&stats->unaccounted_time);
-	blkg_stat_exit(&stats->avg_queue_size_sum);
-	blkg_stat_exit(&stats->avg_queue_size_samples);
-	blkg_stat_exit(&stats->dequeue);
-	blkg_stat_exit(&stats->group_wait_time);
-	blkg_stat_exit(&stats->idle_time);
-	blkg_stat_exit(&stats->empty_time);
-#endif
 }
 
 static int cfqg_stats_init(struct cfqg_stats *stats, gfp_t gfp)
@@ -1558,16 +1320,6 @@ static int cfqg_stats_init(struct cfqg_stats *stats, gfp_t gfp)
 	    blkg_stat_init(&stats->time, gfp))
 		goto err;
 
-#ifdef CONFIG_DEBUG_BLK_CGROUP
-	if (blkg_stat_init(&stats->unaccounted_time, gfp) ||
-	    blkg_stat_init(&stats->avg_queue_size_sum, gfp) ||
-	    blkg_stat_init(&stats->avg_queue_size_samples, gfp) ||
-	    blkg_stat_init(&stats->dequeue, gfp) ||
-	    blkg_stat_init(&stats->group_wait_time, gfp) ||
-	    blkg_stat_init(&stats->idle_time, gfp) ||
-	    blkg_stat_init(&stats->empty_time, gfp))
-		goto err;
-#endif
 	return 0;
 err:
 	cfqg_stats_exit(stats);
@@ -2007,32 +1759,6 @@ static int cfqg_print_stat_sectors_recursive(struct seq_file *sf, void *v)
 	return 0;
 }
 
-#ifdef CONFIG_DEBUG_BLK_CGROUP
-static u64 cfqg_prfill_avg_queue_size(struct seq_file *sf,
-				      struct blkg_policy_data *pd, int off)
-{
-	struct cfq_group *cfqg = pd_to_cfqg(pd);
-	u64 samples = blkg_stat_read(&cfqg->stats.avg_queue_size_samples);
-	u64 v = 0;
-
-	if (samples) {
-		v = blkg_stat_read(&cfqg->stats.avg_queue_size_sum);
-		v = div64_u64(v, samples);
-	}
-	__blkg_prfill_u64(sf, pd, v);
-	return 0;
-}
-
-/* print avg_queue_size */
-static int cfqg_print_avg_queue_size(struct seq_file *sf, void *v)
-{
-	blkcg_print_blkgs(sf, css_to_blkcg(seq_css(sf)),
-			  cfqg_prfill_avg_queue_size, &blkcg_policy_cfq,
-			  0, false);
-	return 0;
-}
-#endif	/* CONFIG_DEBUG_BLK_CGROUP */
-
 static struct cftype cfq_blkcg_legacy_files[] = {
 	/* on root, weight is mapped to leaf_weight */
 	{
@@ -2159,37 +1885,6 @@ static struct cftype cfq_blkcg_legacy_files[] = {
 		.private = offsetof(struct cfq_group, stats.queued),
 		.seq_show = cfqg_print_rwstat_recursive,
 	},
-#ifdef CONFIG_DEBUG_BLK_CGROUP
-	{
-		.name = "avg_queue_size",
-		.seq_show = cfqg_print_avg_queue_size,
-	},
-	{
-		.name = "group_wait_time",
-		.private = offsetof(struct cfq_group, stats.group_wait_time),
-		.seq_show = cfqg_print_stat,
-	},
-	{
-		.name = "idle_time",
-		.private = offsetof(struct cfq_group, stats.idle_time),
-		.seq_show = cfqg_print_stat,
-	},
-	{
-		.name = "empty_time",
-		.private = offsetof(struct cfq_group, stats.empty_time),
-		.seq_show = cfqg_print_stat,
-	},
-	{
-		.name = "dequeue",
-		.private = offsetof(struct cfq_group, stats.dequeue),
-		.seq_show = cfqg_print_stat,
-	},
-	{
-		.name = "unaccounted_time",
-		.private = offsetof(struct cfq_group, stats.unaccounted_time),
-		.seq_show = cfqg_print_stat,
-	},
-#endif	/* CONFIG_DEBUG_BLK_CGROUP */
 	{ }	/* terminate */
 };
 
@@ -2233,20 +1928,6 @@ static struct cftype cfq_blkcg_files[] = {
 	},
 	{ }	/* terminate */
 };
-
-#else /* GROUP_IOSCHED */
-static struct cfq_group *cfq_lookup_cfqg(struct cfq_data *cfqd,
-					 struct blkcg *blkcg)
-{
-	return cfqd->root_group;
-}
-
-static inline void
-cfq_link_cfqq_cfqg(struct cfq_queue *cfqq, struct cfq_group *cfqg) {
-	cfqq->cfqg = cfqg;
-}
-
-#endif /* GROUP_IOSCHED */
 
 /*
  * The cfqd->service_trees holds all pending cfq_queue's that have
@@ -2665,7 +2346,6 @@ static int cfq_allow_rq_merge(struct request_queue *q, struct request *rq,
 static inline void cfq_del_timer(struct cfq_data *cfqd, struct cfq_queue *cfqq)
 {
 	hrtimer_try_to_cancel(&cfqd->idle_slice_timer);
-	cfqg_stats_update_idle_time(cfqq->cfqg);
 }
 
 static void __cfq_set_active_queue(struct cfq_data *cfqd,
@@ -2674,7 +2354,6 @@ static void __cfq_set_active_queue(struct cfq_data *cfqd,
 	if (cfqq) {
 		cfq_log_cfqq(cfqd, cfqq, "set_active wl_class:%d wl_type:%d",
 				cfqd->serving_wl_class, cfqd->serving_wl_type);
-		cfqg_stats_update_avg_queue_size(cfqq->cfqg);
 		cfqq->slice_start = 0;
 		cfqq->dispatch_start = ktime_get_ns();
 		cfqq->allocated_slice = 0;
@@ -3030,7 +2709,6 @@ static void cfq_arm_slice_timer(struct cfq_data *cfqd)
 
 	hrtimer_start(&cfqd->idle_slice_timer, ns_to_ktime(sl),
 		      HRTIMER_MODE_REL);
-	cfqg_stats_set_start_idle_time(cfqq->cfqg);
 	cfq_log_cfqq(cfqd, cfqq, "arm_idle: %llu group_idle: %d", sl,
 			group_idle ? 1 : 0);
 }
@@ -3798,7 +3476,6 @@ static void cfq_init_cfqq(struct cfq_data *cfqd, struct cfq_queue *cfqq,
 	cfqq->pid = pid;
 }
 
-#ifdef CONFIG_CFQ_GROUP_IOSCHED
 static void check_blkcg_changed(struct cfq_io_cq *cic, struct bio *bio)
 {
 	struct cfq_data *cfqd = cic_to_cfqd(cic);
@@ -3836,11 +3513,6 @@ static void check_blkcg_changed(struct cfq_io_cq *cic, struct bio *bio)
 
 	cic->blkcg_serial_nr = serial_nr;
 }
-#else
-static inline void check_blkcg_changed(struct cfq_io_cq *cic, struct bio *bio)
-{
-}
-#endif  /* CONFIG_CFQ_GROUP_IOSCHED */
 
 static struct cfq_queue **
 cfq_async_queue_prio(struct cfq_group *cfqg, int ioprio_class, int ioprio)
@@ -3936,9 +3608,7 @@ cfq_update_io_thinktime(struct cfq_data *cfqd, struct cfq_queue *cfqq,
 		__cfq_update_io_thinktime(&cfqq->service_tree->ttime,
 			cfqd->cfq_slice_idle);
 	}
-#ifdef CONFIG_CFQ_GROUP_IOSCHED
 	__cfq_update_io_thinktime(&cfqq->cfqg->ttime, get_group_idle(cfqd));
-#endif
 }
 
 static void
@@ -4159,7 +3829,6 @@ cfq_rq_enqueued(struct cfq_data *cfqd, struct cfq_queue *cfqq,
 				cfq_clear_cfqq_wait_request(cfqq);
 				__blk_run_queue(cfqd->queue);
 			} else {
-				cfqg_stats_update_idle_time(cfqq->cfqg);
 				cfq_mark_cfqq_must_dispatch(cfqq);
 			}
 		}
@@ -4303,9 +3972,7 @@ static void cfq_completed_request(struct request_queue *q, struct request *rq)
 			cfqd->last_delayed_sync = now;
 	}
 
-#ifdef CONFIG_CFQ_GROUP_IOSCHED
 	cfqq->cfqg->ttime.last_end_request = now;
-#endif
 
 	/*
 	 * If this is the active queue, check if it needs to be expired,
@@ -4609,11 +4276,7 @@ static void cfq_exit_queue(struct elevator_queue *e)
 
 	cfq_shutdown_timer_wq(cfqd);
 
-#ifdef CONFIG_CFQ_GROUP_IOSCHED
 	blkcg_deactivate_policy(q, &blkcg_policy_cfq);
-#else
-	kfree(cfqd->root_group);
-#endif
 	kfree(cfqd);
 }
 
@@ -4644,23 +4307,11 @@ static int cfq_init_queue(struct request_queue *q, struct elevator_type *e)
 	cfqd->grp_service_tree = CFQ_RB_ROOT;
 
 	/* Init root group and prefer root group over other groups by default */
-#ifdef CONFIG_CFQ_GROUP_IOSCHED
 	ret = blkcg_activate_policy(q, &blkcg_policy_cfq);
 	if (ret)
 		goto out_free;
 
 	cfqd->root_group = blkg_to_cfqg(q->root_blkg);
-#else
-	ret = -ENOMEM;
-	cfqd->root_group = kzalloc_node(sizeof(*cfqd->root_group),
-					GFP_KERNEL, cfqd->queue->node);
-	if (!cfqd->root_group)
-		goto out_free;
-
-	cfq_init_cfqg_base(cfqd->root_group);
-	cfqd->root_group->weight = 2 * CFQ_WEIGHT_LEGACY_DFL;
-	cfqd->root_group->leaf_weight = 2 * CFQ_WEIGHT_LEGACY_DFL;
-#endif
 
 	/*
 	 * Not strictly needed (since RB_ROOT just clears the node and we
@@ -4895,7 +4546,6 @@ static struct elevator_type iosched_cfq = {
 	.elevator_owner =	THIS_MODULE,
 };
 
-#ifdef CONFIG_CFQ_GROUP_IOSCHED
 static struct blkcg_policy blkcg_policy_cfq = {
 	.dfl_cftypes		= cfq_blkcg_files,
 	.legacy_cftypes		= cfq_blkcg_legacy_files,
@@ -4911,19 +4561,14 @@ static struct blkcg_policy blkcg_policy_cfq = {
 	.pd_free_fn		= cfq_pd_free,
 	.pd_reset_stats_fn	= cfq_pd_reset_stats,
 };
-#endif
 
 static int __init cfq_init(void)
 {
 	int ret;
 
-#ifdef CONFIG_CFQ_GROUP_IOSCHED
 	ret = blkcg_policy_register(&blkcg_policy_cfq);
 	if (ret)
 		return ret;
-#else
-	cfq_group_idle = 0;
-#endif
 
 	ret = -ENOMEM;
 	cfq_pool = KMEM_CACHE(cfq_queue, 0);
@@ -4939,17 +4584,13 @@ static int __init cfq_init(void)
 err_free_pool:
 	kmem_cache_destroy(cfq_pool);
 err_pol_unreg:
-#ifdef CONFIG_CFQ_GROUP_IOSCHED
 	blkcg_policy_unregister(&blkcg_policy_cfq);
-#endif
 	return ret;
 }
 
 static void __exit cfq_exit(void)
 {
-#ifdef CONFIG_CFQ_GROUP_IOSCHED
 	blkcg_policy_unregister(&blkcg_policy_cfq);
-#endif
 	elv_unregister(&iosched_cfq);
 	kmem_cache_destroy(cfq_pool);
 }
