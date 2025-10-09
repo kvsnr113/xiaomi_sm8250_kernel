@@ -183,10 +183,10 @@ int mod_init(void)
         }
 
 
-        prngArrays = kmalloc((numberOfRndArrays + 1) * rndArraySize * sizeof(uint64_t), GFP_KERNEL);
+        prngArrays = kzalloc((numberOfRndArrays + 1) * rndArraySize * sizeof(uint64_t), GFP_KERNEL);
         while (!prngArrays) {
-                printk(KERN_INFO "[srandom] mod_init kmalloc failed to allocate initial memory.  retrying...\n");
-                prngArrays = kmalloc((numberOfRndArrays + 1) * rndArraySize * sizeof(uint64_t), GFP_KERNEL);
+                printk(KERN_INFO "[srandom] mod_init kzalloc failed to allocate initial memory.  retrying...\n");
+                prngArrays = kzalloc((numberOfRndArrays + 1) * rndArraySize * sizeof(uint64_t), GFP_KERNEL);
         }
 
         //  Seed everything
@@ -279,7 +279,7 @@ static ssize_t sdevice_read(struct file * file, char * buf, size_t requestedCoun
         #endif
 
 
-        new_buf = kmalloc((requestedCount + 512) * sizeof(uint8_t), GFP_KERNEL|__GFP_NOWARN);
+        new_buf = kzalloc((requestedCount + 512) * sizeof(uint8_t), GFP_KERNEL|__GFP_NOWARN);
         while (!new_buf) {
                 #ifdef DEBUG_READ
                 printk(KERN_INFO "[srandom] using vmalloc to allocate large blocksize.\n");
@@ -364,9 +364,9 @@ static ssize_t sdevice_write(struct file *file, const char __user *buf, size_t r
         /*
          * Allocate memory to read from device
          */
-        newdata = kmalloc(receivedCount, GFP_KERNEL);
+        newdata = kzalloc(receivedCount, GFP_KERNEL);
         while (!newdata) {
-                newdata = kmalloc(receivedCount, GFP_KERNEL);
+                newdata = kzalloc(receivedCount, GFP_KERNEL);
         }
 
         result = COPY_FROM_USER(newdata, buf, receivedCount);
