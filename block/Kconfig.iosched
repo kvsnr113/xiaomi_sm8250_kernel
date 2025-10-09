@@ -33,6 +33,13 @@ config IOSCHED_CFQ
 
 	  This is the default I/O scheduler.
 
+config IOSCHED_CFQ_SIMPLE
+	bool "Simple version of CFQ"
+	depends on IOSCHED_CFQ && BLK_CGROUP
+	default y
+	---help---
+	  Use simplified version of CFQ.
+
 config CFQ_GROUP_IOSCHED
 	bool "CFQ Group Scheduling support"
 	depends on IOSCHED_CFQ && BLK_CGROUP

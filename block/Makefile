@@ -20,7 +20,11 @@ obj-$(CONFIG_BLK_DEV_THROTTLING)	+= blk-throttle.o
 obj-$(CONFIG_BLK_CGROUP_IOLATENCY)	+= blk-iolatency.o
 obj-$(CONFIG_IOSCHED_NOOP)	+= noop-iosched.o
 obj-$(CONFIG_IOSCHED_DEADLINE)	+= deadline-iosched.o
+ifeq ($(CONFIG_IOSCHED_CFQ_SIMPLE),y)
+obj-$(CONFIG_IOSCHED_CFQ)	+= cfq_simple-iosched.o
+else
 obj-$(CONFIG_IOSCHED_CFQ)	+= cfq-iosched.o
+endif
 obj-$(CONFIG_MQ_IOSCHED_DEADLINE)	+= mq-deadline.o
 obj-$(CONFIG_MQ_IOSCHED_KYBER)	+= kyber-iosched.o
 bfq-y				:= bfq-iosched.o bfq-wf2q.o bfq-cgroup.o
