@@ -229,7 +229,6 @@ static enum hrtimer_restart alarmtimer_fired(struct hrtimer *timer)
 	}
 	spin_unlock_irqrestore(&base->lock, flags);
 
-	trace_alarmtimer_fired(alarm, base->gettime());
 	return ret;
 
 }
@@ -297,8 +296,6 @@ static int alarmtimer_suspend(struct device *dev)
 		__pm_wakeup_event(ws, ktime_to_ms(min) + 10);
 		return -EBUSY;
 	}
-
-	trace_alarmtimer_suspend(expires, type);
 
 	/* Setup an rtc timer to fire that far in the future */
 	rtc_timer_cancel(rtc, &rtctimer);
@@ -388,7 +385,6 @@ void alarm_start(struct alarm *alarm, ktime_t start)
 	hrtimer_start(&alarm->timer, alarm->node.expires, HRTIMER_MODE_ABS);
 	spin_unlock_irqrestore(&base->lock, flags);
 
-	trace_alarmtimer_start(alarm, base->gettime());
 }
 EXPORT_SYMBOL_GPL(alarm_start);
 
@@ -438,7 +434,6 @@ int alarm_try_to_cancel(struct alarm *alarm)
 		alarmtimer_dequeue(base, alarm);
 	spin_unlock_irqrestore(&base->lock, flags);
 
-	trace_alarmtimer_cancel(alarm, base->gettime());
 	return ret;
 }
 EXPORT_SYMBOL_GPL(alarm_try_to_cancel);
