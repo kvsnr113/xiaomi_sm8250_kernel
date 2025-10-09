@@ -98,24 +98,12 @@ static struct miscdevice srandom_dev = {
         &sfops
 };
 
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,8,0)
 static struct proc_ops proc_fops={
       .proc_open = proc_open,
       .proc_release = single_release,
       .proc_read = seq_read,
       .proc_lseek = seq_lseek
 };
-#else
-static const struct file_operations proc_fops = {
-        .owner   = THIS_MODULE,
-        .read    = seq_read,
-        .open    = proc_open,
-        .llseek  = seq_lseek,
-        .release = single_release,
-};
-#endif
-
 
 static struct mutex UpArr_mutex[numberOfRndArrays];
 static struct mutex ArrBusy_mutex;
