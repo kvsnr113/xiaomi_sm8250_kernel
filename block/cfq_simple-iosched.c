@@ -25,10 +25,6 @@
 /* max queue in one round of service */
 static const int cfq_quantum = 16;
 static const u64 cfq_fifo_expire[2] = { NSEC_PER_SEC / 5, NSEC_PER_SEC / 10 };
-/* maximum backwards seek, in KiB */
-static const int cfq_back_max = 16 * 1024;
-/* penalty of a backwards seek */
-static const int cfq_back_penalty = 1;
 static const u64 cfq_slice_sync = NSEC_PER_SEC / 10;
 static u64 cfq_slice_async = NSEC_PER_SEC / 25;
 static const int cfq_slice_async_rq = 4;
@@ -54,11 +50,6 @@ static const int cfq_hist_divisor = 4;
 #define CFQ_SLICE_SCALE		(5)
 #define CFQ_HW_QUEUE_MIN	(5)
 #define CFQ_SERVICE_SHIFT       12
-
-#define CFQQ_SEEK_THR		(sector_t)(8 * 100)
-#define CFQQ_CLOSE_THR		(sector_t)(8 * 1024)
-#define CFQQ_SECT_THR_NONROT	(sector_t)(2 * 32)
-#define CFQQ_SEEKY(cfqq)	(hweight32(cfqq->seek_history) > 32/8)
 
 #define RQ_CIC(rq)		icq_to_cic((rq)->elv.icq)
 #define RQ_CFQQ(rq)		(struct cfq_queue *) ((rq)->elv.priv[0])
@@ -152,7 +143,6 @@ struct cfq_queue {
 
 	pid_t pid;
 
-	u32 seek_history;
 	sector_t last_request_pos;
 
 	struct cfq_rb_root *service_tree;
@@ -358,8 +348,6 @@ struct cfq_data {
 	 * tunables, see top of file
 	 */
 	unsigned int cfq_quantum;
-	unsigned int cfq_back_penalty;
-	unsigned int cfq_back_max;
 	unsigned int cfq_slice_async_rq;
 	unsigned int cfq_latency;
 	u64 cfq_fifo_expire[2];
@@ -856,94 +844,26 @@ static inline bool cfq_slice_used(struct cfq_queue *cfqq)
 	return true;
 }
 
-/*
- * Lifted from AS - choose which of rq1 and rq2 that is best served now.
- * We choose the request that is closest to the head right now. Distance
- * behind the head is penalized and only allowed to a certain extent.
- */
 static struct request *
-cfq_choose_req(struct cfq_data *cfqd, struct request *rq1, struct request *rq2, sector_t last)
+cfq_choose_req(struct cfq_data *cfqd, struct request *rq1, struct request *rq2)
 {
-	sector_t s1, s2, d1 = 0, d2 = 0;
-	unsigned long back_max;
-#define CFQ_RQ1_WRAP	0x01 /* request 1 wraps */
-#define CFQ_RQ2_WRAP	0x02 /* request 2 wraps */
-	unsigned wrap = 0; /* bit mask: requests behind the disk head? */
+    // UFS 3.1: Simple selection - no seek optimization needed
+    
+    /* Basic sanity checks */
+    if (rq1 == NULL || rq1 == rq2)
+        return rq2;
+    if (rq2 == NULL)
+        return rq1;
 
-	if (rq1 == NULL || rq1 == rq2)
-		return rq2;
-	if (rq2 == NULL)
-		return rq1;
+    /* For flash storage, use simple priority-based selection */
+    if (rq_is_sync(rq1) != rq_is_sync(rq2))
+        return rq_is_sync(rq1) ? rq1 : rq2;
 
-	if (rq_is_sync(rq1) != rq_is_sync(rq2))
-		return rq_is_sync(rq1) ? rq1 : rq2;
+    if ((rq1->cmd_flags ^ rq2->cmd_flags) & REQ_PRIO)
+        return rq1->cmd_flags & REQ_PRIO ? rq1 : rq2;
 
-	if ((rq1->cmd_flags ^ rq2->cmd_flags) & REQ_PRIO)
-		return rq1->cmd_flags & REQ_PRIO ? rq1 : rq2;
-
-	s1 = blk_rq_pos(rq1);
-	s2 = blk_rq_pos(rq2);
-
-	/*
-	 * by definition, 1KiB is 2 sectors
-	 */
-	back_max = cfqd->cfq_back_max * 2;
-
-	/*
-	 * Strict one way elevator _except_ in the case where we allow
-	 * short backward seeks which are biased as twice the cost of a
-	 * similar forward seek.
-	 */
-	if (s1 >= last)
-		d1 = s1 - last;
-	else if (s1 + back_max >= last)
-		d1 = (last - s1) * cfqd->cfq_back_penalty;
-	else
-		wrap |= CFQ_RQ1_WRAP;
-
-	if (s2 >= last)
-		d2 = s2 - last;
-	else if (s2 + back_max >= last)
-		d2 = (last - s2) * cfqd->cfq_back_penalty;
-	else
-		wrap |= CFQ_RQ2_WRAP;
-
-	/* Found required data */
-
-	/*
-	 * By doing switch() on the bit mask "wrap" we avoid having to
-	 * check two variables for all permutations: --> faster!
-	 */
-	switch (wrap) {
-	case 0: /* common case for CFQ: rq1 and rq2 not wrapped */
-		if (d1 < d2)
-			return rq1;
-		else if (d2 < d1)
-			return rq2;
-		else {
-			if (s1 >= s2)
-				return rq1;
-			else
-				return rq2;
-		}
-
-	case CFQ_RQ2_WRAP:
-		return rq1;
-	case CFQ_RQ1_WRAP:
-		return rq2;
-	case (CFQ_RQ1_WRAP|CFQ_RQ2_WRAP): /* both rqs wrapped */
-	default:
-		/*
-		 * Since both rqs are wrapped,
-		 * start with the one that's further behind head
-		 * (--> only *one* back seek required),
-		 * since back seek takes more time than forward.
-		 */
-		if (s1 <= s2)
-			return rq1;
-		else
-			return rq2;
-	}
+    /* Default: just return the first request */
+    return rq1;
 }
 
 static struct cfq_queue *cfq_rb_first(struct cfq_rb_root *root)
@@ -995,7 +915,7 @@ cfq_find_next_rq(struct cfq_data *cfqd, struct cfq_queue *cfqq,
 			next = rb_entry_rq(rbnext);
 	}
 
-	return cfq_choose_req(cfqd, next, prev, blk_rq_pos(last));
+	return cfq_choose_req(cfqd, next, prev);
 }
 
 static u64 cfq_slice_offset(struct cfq_data *cfqd,
@@ -2169,7 +2089,7 @@ static void cfq_add_rq_rb(struct request *rq)
 	 * check if this request is a better next-serve candidate
 	 */
 	prev = cfqq->next_rq;
-	cfqq->next_rq = cfq_choose_req(cfqd, cfqq->next_rq, rq, cfqd->last_position);
+	cfqq->next_rq = cfq_choose_req(cfqd, cfqq->next_rq, rq);
 
 	/*
 	 * adjust priority tree position, if ->next_rq changes
@@ -2216,7 +2136,6 @@ static void cfq_activate_request(struct request_queue *q, struct request *rq)
 	cfq_log_cfqq(cfqd, RQ_CFQQ(rq), "activate rq, drv=%d",
 						cfqd->rq_in_driver);
 
-	cfqd->last_position = blk_rq_pos(rq) + blk_rq_sectors(rq);
 }
 
 static void cfq_deactivate_request(struct request_queue *q, struct request *rq)
@@ -2394,7 +2313,7 @@ __cfq_slice_expired(struct cfq_data *cfqd, struct cfq_queue *cfqq,
 	 * the mean seek distance.  If not, it may be time to break the
 	 * queues apart again.
 	 */
-	if (cfq_cfqq_coop(cfqq) && CFQQ_SEEKY(cfqq))
+	if (cfq_cfqq_coop(cfqq))
 		cfq_mark_cfqq_split_coop(cfqq);
 
 	/*
@@ -2490,57 +2409,13 @@ static struct cfq_queue *cfq_set_active_queue(struct cfq_data *cfqd,
 static inline sector_t cfq_dist_from_last(struct cfq_data *cfqd,
 					  struct request *rq)
 {
-	if (blk_rq_pos(rq) >= cfqd->last_position)
-		return blk_rq_pos(rq) - cfqd->last_position;
-	else
-		return cfqd->last_position - blk_rq_pos(rq);
+	return 0;
 }
 
 static inline int cfq_rq_close(struct cfq_data *cfqd, struct cfq_queue *cfqq,
 			       struct request *rq)
 {
-	return cfq_dist_from_last(cfqd, rq) <= CFQQ_CLOSE_THR;
-}
-
-static struct cfq_queue *cfqq_close(struct cfq_data *cfqd,
-				    struct cfq_queue *cur_cfqq)
-{
-	struct rb_root *root = &cfqd->prio_trees[cur_cfqq->org_ioprio];
-	struct rb_node *parent, *node;
-	struct cfq_queue *__cfqq;
-	sector_t sector = cfqd->last_position;
-
-	if (RB_EMPTY_ROOT(root))
-		return NULL;
-
-	/*
-	 * First, if we find a request starting at the end of the last
-	 * request, choose it.
-	 */
-	__cfqq = cfq_prio_tree_lookup(cfqd, root, sector, &parent, NULL);
-	if (__cfqq)
-		return __cfqq;
-
-	/*
-	 * If the exact sector wasn't found, the parent of the NULL leaf
-	 * will contain the closest sector.
-	 */
-	__cfqq = rb_entry(parent, struct cfq_queue, p_node);
-	if (cfq_rq_close(cfqd, cur_cfqq, __cfqq->next_rq))
-		return __cfqq;
-
-	if (blk_rq_pos(__cfqq->next_rq) < sector)
-		node = rb_next(&__cfqq->p_node);
-	else
-		node = rb_prev(&__cfqq->p_node);
-	if (!node)
-		return NULL;
-
-	__cfqq = rb_entry(node, struct cfq_queue, p_node);
-	if (cfq_rq_close(cfqd, cur_cfqq, __cfqq->next_rq))
-		return __cfqq;
-
-	return NULL;
+	return 0;
 }
 
 /*
@@ -2556,49 +2431,7 @@ static struct cfq_queue *cfqq_close(struct cfq_data *cfqd,
 static struct cfq_queue *cfq_close_cooperator(struct cfq_data *cfqd,
 					      struct cfq_queue *cur_cfqq)
 {
-	struct cfq_queue *cfqq;
-
-	if (cfq_class_idle(cur_cfqq))
-		return NULL;
-	if (!cfq_cfqq_sync(cur_cfqq))
-		return NULL;
-	if (CFQQ_SEEKY(cur_cfqq))
-		return NULL;
-
-	/*
-	 * Don't search priority tree if it's the only queue in the group.
-	 */
-	if (cur_cfqq->cfqg->nr_cfqq == 1)
-		return NULL;
-
-	/*
-	 * We should notice if some of the queues are cooperating, eg
-	 * working closely on the same area of the disk. In that case,
-	 * we can group them together and don't waste time idling.
-	 */
-	cfqq = cfqq_close(cfqd, cur_cfqq);
-	if (!cfqq)
-		return NULL;
-
-	/* If new queue belongs to different cfq_group, don't choose it */
-	if (cur_cfqq->cfqg != cfqq->cfqg)
-		return NULL;
-
-	/*
-	 * It only makes sense to merge sync queues.
-	 */
-	if (!cfq_cfqq_sync(cfqq))
-		return NULL;
-	if (CFQQ_SEEKY(cfqq))
-		return NULL;
-
-	/*
-	 * Do not merge queues of different priority classes
-	 */
-	if (cfq_class_rt(cfqq) != cfq_class_rt(cur_cfqq))
-		return NULL;
-
-	return cfqq;
+	return NULL;
 }
 
 /*
@@ -2964,7 +2797,6 @@ static void cfq_choose_cfqg(struct cfq_data *cfqd)
 static struct cfq_queue *cfq_select_queue(struct cfq_data *cfqd)
 {
 	struct cfq_queue *cfqq, *new_cfqq = NULL;
-	u64 now = ktime_get_ns();
 
 	cfqq = cfqd->active_queue;
 	if (!cfqq)
@@ -3028,17 +2860,6 @@ static struct cfq_queue *cfq_select_queue(struct cfq_data *cfqd)
 	if (hrtimer_active(&cfqd->idle_slice_timer)) {
 		cfqq = NULL;
 		goto keep_queue;
-	}
-
-	/*
-	 * This is a deep seek queue, but the device is much faster than
-	 * the queue can deliver, don't idle
-	 **/
-	if (CFQQ_SEEKY(cfqq) && cfq_cfqq_idle_window(cfqq) &&
-	    (cfq_cfqq_slice_new(cfqq) ||
-	    (cfqq->slice_end - now > now - cfqq->slice_start))) {
-		cfq_clear_cfqq_deep(cfqq);
-		cfq_clear_cfqq_idle_window(cfqq);
 	}
 
 	if (cfqq->dispatched && cfq_should_idle(cfqd, cfqq)) {
@@ -3611,26 +3432,6 @@ cfq_update_io_thinktime(struct cfq_data *cfqd, struct cfq_queue *cfqq,
 	__cfq_update_io_thinktime(&cfqq->cfqg->ttime, get_group_idle(cfqd));
 }
 
-static void
-cfq_update_io_seektime(struct cfq_data *cfqd, struct cfq_queue *cfqq,
-		       struct request *rq)
-{
-	sector_t sdist = 0;
-	sector_t n_sec = blk_rq_sectors(rq);
-	if (cfqq->last_request_pos) {
-		if (cfqq->last_request_pos < blk_rq_pos(rq))
-			sdist = blk_rq_pos(rq) - cfqq->last_request_pos;
-		else
-			sdist = cfqq->last_request_pos - blk_rq_pos(rq);
-	}
-
-	cfqq->seek_history <<= 1;
-	if (blk_queue_nonrot(cfqd->queue))
-		cfqq->seek_history |= (n_sec < CFQQ_SECT_THR_NONROT);
-	else
-		cfqq->seek_history |= (sdist > CFQQ_SEEK_THR);
-}
-
 static inline bool req_noidle(struct request *req)
 {
 	return req_op(req) == REQ_OP_WRITE &&
@@ -3662,7 +3463,7 @@ cfq_update_idle_window(struct cfq_data *cfqd, struct cfq_queue *cfqq,
 		enable_idle = 0;
 	else if (!atomic_read(&cic->icq.ioc->active_ref) ||
 		 !cfqd->cfq_slice_idle ||
-		 (!cfq_cfqq_deep(cfqq) && CFQQ_SEEKY(cfqq)))
+		 (!cfq_cfqq_deep(cfqq)))
 		enable_idle = 0;
 	else if (sample_valid(cic->ttime.ttime_samples)) {
 		if (cic->ttime.ttime_mean > cfqd->cfq_slice_idle)
@@ -3806,7 +3607,6 @@ cfq_rq_enqueued(struct cfq_data *cfqd, struct cfq_queue *cfqq,
 		cfqq->prio_pending++;
 
 	cfq_update_io_thinktime(cfqd, cfqq, cic);
-	cfq_update_io_seektime(cfqd, cfqq, rq);
 	cfq_update_idle_window(cfqd, cfqq, cic);
 
 	cfqq->last_request_pos = blk_rq_pos(rq) + blk_rq_sectors(rq);
@@ -4345,8 +4145,6 @@ static int cfq_init_queue(struct request_queue *q, struct elevator_type *e)
 	cfqd->cfq_quantum = cfq_quantum;
 	cfqd->cfq_fifo_expire[0] = cfq_fifo_expire[0];
 	cfqd->cfq_fifo_expire[1] = cfq_fifo_expire[1];
-	cfqd->cfq_back_max = cfq_back_max;
-	cfqd->cfq_back_penalty = cfq_back_penalty;
 	cfqd->cfq_slice[0] = cfq_slice_async;
 	cfqd->cfq_slice[1] = cfq_slice_sync;
 	cfqd->cfq_target_latency = cfq_target_latency;
@@ -4410,8 +4208,6 @@ static ssize_t __FUNC(struct elevator_queue *e, char *page)		\
 SHOW_FUNCTION(cfq_quantum_show, cfqd->cfq_quantum, 0);
 SHOW_FUNCTION(cfq_fifo_expire_sync_show, cfqd->cfq_fifo_expire[1], 1);
 SHOW_FUNCTION(cfq_fifo_expire_async_show, cfqd->cfq_fifo_expire[0], 1);
-SHOW_FUNCTION(cfq_back_seek_max_show, cfqd->cfq_back_max, 0);
-SHOW_FUNCTION(cfq_back_seek_penalty_show, cfqd->cfq_back_penalty, 0);
 SHOW_FUNCTION(cfq_slice_idle_show, cfqd->cfq_slice_idle, 1);
 SHOW_FUNCTION(cfq_group_idle_show, cfqd->cfq_group_idle, 1);
 SHOW_FUNCTION(cfq_slice_sync_show, cfqd->cfq_slice[1], 1);
@@ -4458,9 +4254,6 @@ STORE_FUNCTION(cfq_fifo_expire_sync_store, &cfqd->cfq_fifo_expire[1], 1,
 		UINT_MAX, 1);
 STORE_FUNCTION(cfq_fifo_expire_async_store, &cfqd->cfq_fifo_expire[0], 1,
 		UINT_MAX, 1);
-STORE_FUNCTION(cfq_back_seek_max_store, &cfqd->cfq_back_max, 0, UINT_MAX, 0);
-STORE_FUNCTION(cfq_back_seek_penalty_store, &cfqd->cfq_back_penalty, 1,
-		UINT_MAX, 0);
 STORE_FUNCTION(cfq_slice_sync_store, &cfqd->cfq_slice[1], 1, UINT_MAX, 1);
 STORE_FUNCTION(cfq_slice_async_store, &cfqd->cfq_slice[0], 1, UINT_MAX, 1);
 STORE_FUNCTION(cfq_slice_async_rq_store, &cfqd->cfq_slice_async_rq, 1,
@@ -4498,8 +4291,6 @@ static struct elv_fs_entry cfq_attrs[] = {
 	CFQ_ATTR(quantum),
 	CFQ_ATTR(fifo_expire_sync),
 	CFQ_ATTR(fifo_expire_async),
-	CFQ_ATTR(back_seek_max),
-	CFQ_ATTR(back_seek_penalty),
 	CFQ_ATTR(slice_sync),
 	CFQ_ATTR(slice_sync_us),
 	CFQ_ATTR(slice_async),
