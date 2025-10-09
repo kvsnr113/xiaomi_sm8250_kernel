@@ -2286,7 +2286,6 @@ static void __cfq_set_active_queue(struct cfq_data *cfqd,
 		cfq_clear_cfqq_fifo_expire(cfqq);
 		cfq_mark_cfqq_slice_new(cfqq);
 
-		cfq_del_timer(cfqd, cfqq);
 	}
 
 	cfqd->active_queue = cfqq;
@@ -2440,110 +2439,7 @@ static struct cfq_queue *cfq_close_cooperator(struct cfq_data *cfqd,
 
 static bool cfq_should_idle(struct cfq_data *cfqd, struct cfq_queue *cfqq)
 {
-	enum wl_class_t wl_class = cfqq_class(cfqq);
-	struct cfq_rb_root *st = cfqq->service_tree;
-
-	BUG_ON(!st);
-	BUG_ON(!st->count);
-
-	if (!cfqd->cfq_slice_idle)
-		return false;
-
-	/* We never do for idle class queues. */
-	if (wl_class == IDLE_WORKLOAD)
-		return false;
-
-	/* We do for queues that were marked with idle window flag. */
-	if (cfq_cfqq_idle_window(cfqq) &&
-	   !(blk_queue_nonrot(cfqd->queue) && cfqd->hw_tag))
-		return true;
-
-	/*
-	 * Otherwise, we do only if they are the last ones
-	 * in their service tree.
-	 */
-	if (st->count == 1 && cfq_cfqq_sync(cfqq) &&
-	   !cfq_io_thinktime_big(cfqd, &st->ttime, false))
-		return true;
-	cfq_log_cfqq(cfqd, cfqq, "Not idling. st->count:%d", st->count);
 	return false;
-}
-
-static void cfq_arm_slice_timer(struct cfq_data *cfqd)
-{
-	struct cfq_queue *cfqq = cfqd->active_queue;
-	struct cfq_rb_root *st = cfqq->service_tree;
-	struct cfq_io_cq *cic;
-	u64 sl, group_idle = 0;
-	u64 now = ktime_get_ns();
-
-	/*
-	 * SSD device without seek penalty, disable idling. But only do so
-	 * for devices that support queuing, otherwise we still have a problem
-	 * with sync vs async workloads.
-	 */
-	if (blk_queue_nonrot(cfqd->queue) && cfqd->hw_tag &&
-		!get_group_idle(cfqd))
-		return;
-
-	WARN_ON(!RB_EMPTY_ROOT(&cfqq->sort_list));
-	WARN_ON(cfq_cfqq_slice_new(cfqq));
-
-	/*
-	 * idle is disabled, either manually or by past process history
-	 */
-	if (!cfq_should_idle(cfqd, cfqq)) {
-		/* no queue idling. Check for group idling */
-		group_idle = get_group_idle(cfqd);
-		if (!group_idle)
-			return;
-	}
-
-	/*
-	 * still active requests from this queue, don't idle
-	 */
-	if (cfqq->dispatched)
-		return;
-
-	/*
-	 * task has exited, don't wait
-	 */
-	cic = cfqd->active_cic;
-	if (!cic || !atomic_read(&cic->icq.ioc->active_ref))
-		return;
-
-	/*
-	 * If our average think time is larger than the remaining time
-	 * slice, then don't idle. This avoids overrunning the allotted
-	 * time slice.
-	 */
-	if (sample_valid(cic->ttime.ttime_samples) &&
-	    (cfqq->slice_end - now < cic->ttime.ttime_mean)) {
-		cfq_log_cfqq(cfqd, cfqq, "Not idling. think_time:%llu",
-			     cic->ttime.ttime_mean);
-		return;
-	}
-
-	/*
-	 * There are other queues in the group or this is the only group and
-	 * it has too big thinktime, don't do group idle.
-	 */
-	if (group_idle &&
-	    (cfqq->cfqg->nr_cfqq > 1 ||
-	     cfq_io_thinktime_big(cfqd, &st->ttime, true)))
-		return;
-
-	cfq_mark_cfqq_wait_request(cfqq);
-
-	if (group_idle)
-		sl = group_idle;
-	else
-		sl = cfqd->cfq_slice_idle;
-
-	hrtimer_start(&cfqd->idle_slice_timer, ns_to_ktime(sl),
-		      HRTIMER_MODE_REL);
-	cfq_log_cfqq(cfqd, cfqq, "arm_idle: %llu group_idle: %d", sl,
-			group_idle ? 1 : 0);
 }
 
 /*
@@ -2796,102 +2692,62 @@ static void cfq_choose_cfqg(struct cfq_data *cfqd)
  */
 static struct cfq_queue *cfq_select_queue(struct cfq_data *cfqd)
 {
-	struct cfq_queue *cfqq, *new_cfqq = NULL;
+    struct cfq_queue *cfqq, *new_cfqq = NULL;
 
-	cfqq = cfqd->active_queue;
-	if (!cfqq)
-		goto new_queue;
+    cfqq = cfqd->active_queue;
+    if (!cfqq)
+        goto new_queue;
 
-	if (!cfqd->rq_queued)
-		return NULL;
+    if (!cfqd->rq_queued)
+        return NULL;
 
-	/*
-	 * We were waiting for group to get backlogged. Expire the queue
-	 */
-	if (cfq_cfqq_wait_busy(cfqq) && !RB_EMPTY_ROOT(&cfqq->sort_list))
-		goto expire;
+    /*
+     * We were waiting for group to get backlogged. Expire the queue
+     */
+    if (cfq_cfqq_wait_busy(cfqq) && !RB_EMPTY_ROOT(&cfqq->sort_list))
+        goto expire;
 
-	/*
-	 * The active queue has run out of time, expire it and select new.
-	 */
-	if (cfq_slice_used(cfqq) && !cfq_cfqq_must_dispatch(cfqq)) {
-		/*
-		 * If slice had not expired at the completion of last request
-		 * we might not have turned on wait_busy flag. Don't expire
-		 * the queue yet. Allow the group to get backlogged.
-		 *
-		 * The very fact that we have used the slice, that means we
-		 * have been idling all along on this queue and it should be
-		 * ok to wait for this request to complete.
-		 */
-		if (cfqq->cfqg->nr_cfqq == 1 && RB_EMPTY_ROOT(&cfqq->sort_list)
-		    && cfqq->dispatched && cfq_should_idle(cfqd, cfqq)) {
-			cfqq = NULL;
-			goto keep_queue;
-		} else
-			goto check_group_idle;
-	}
+    /*
+     * The active queue has run out of time, expire it and select new.
+     */
+    if (cfq_slice_used(cfqq) && !cfq_cfqq_must_dispatch(cfqq)) {
+        goto expire;  // SIMPLIFIED: Just expire, no idle checks
+    }
 
-	/*
-	 * The active queue has requests and isn't expired, allow it to
-	 * dispatch.
-	 */
-	if (!RB_EMPTY_ROOT(&cfqq->sort_list))
-		goto keep_queue;
+    /*
+     * The active queue has requests and isn't expired, allow it to
+     * dispatch.
+     */
+    if (!RB_EMPTY_ROOT(&cfqq->sort_list))
+        goto keep_queue;
 
-	/*
-	 * If another queue has a request waiting within our mean seek
-	 * distance, let it run.  The expire code will check for close
-	 * cooperators and put the close queue at the front of the service
-	 * tree.  If possible, merge the expiring queue with the new cfqq.
-	 */
-	new_cfqq = cfq_close_cooperator(cfqd, cfqq);
-	if (new_cfqq) {
-		if (!cfqq->new_cfqq)
-			cfq_setup_merge(cfqq, new_cfqq);
-		goto expire;
-	}
+    /*
+     * If another queue has a request, let it run.
+     */
+    new_cfqq = cfq_close_cooperator(cfqd, cfqq);
+    if (new_cfqq) {
+        if (!cfqq->new_cfqq)
+            cfq_setup_merge(cfqq, new_cfqq);
+        goto expire;
+    }
 
-	/*
-	 * No requests pending. If the active queue still has requests in
-	 * flight or is idling for a new request, allow either of these
-	 * conditions to happen (or time out) before selecting a new queue.
-	 */
-	if (hrtimer_active(&cfqd->idle_slice_timer)) {
-		cfqq = NULL;
-		goto keep_queue;
-	}
+    /*
+     * No requests pending. Just expire and move to next queue.
+     */
+    if (RB_EMPTY_ROOT(&cfqq->sort_list))
+        goto expire;
 
-	if (cfqq->dispatched && cfq_should_idle(cfqd, cfqq)) {
-		cfqq = NULL;
-		goto keep_queue;
-	}
-
-	/*
-	 * If group idle is enabled and there are requests dispatched from
-	 * this group, wait for requests to complete.
-	 */
-check_group_idle:
-	if (get_group_idle(cfqd) && cfqq->cfqg->nr_cfqq == 1 &&
-	    cfqq->cfqg->dispatched &&
-	    !cfq_io_thinktime_big(cfqd, &cfqq->cfqg->ttime, true)) {
-		cfqq = NULL;
-		goto keep_queue;
-	}
+keep_queue:
+    return cfqq;
 
 expire:
-	cfq_slice_expired(cfqd, 0);
+    cfq_slice_expired(cfqd, 0);
 new_queue:
-	/*
-	 * Current queue expired. Check if we have to switch to a new
-	 * service tree
-	 */
-	if (!new_cfqq)
-		cfq_choose_cfqg(cfqd);
+    if (!new_cfqq)
+        cfq_choose_cfqg(cfqd);
 
-	cfqq = cfq_set_active_queue(cfqd, new_cfqq);
-keep_queue:
-	return cfqq;
+    cfqq = cfq_set_active_queue(cfqd, new_cfqq);
+    return cfqq;
 }
 
 static int __cfq_forced_dispatch_cfqq(struct cfq_queue *cfqq)
@@ -3446,39 +3302,7 @@ static void
 cfq_update_idle_window(struct cfq_data *cfqd, struct cfq_queue *cfqq,
 		       struct cfq_io_cq *cic)
 {
-	int old_idle, enable_idle;
-
-	/*
-	 * Don't idle for async or idle io prio class
-	 */
-	if (!cfq_cfqq_sync(cfqq) || cfq_class_idle(cfqq))
-		return;
-
-	enable_idle = old_idle = cfq_cfqq_idle_window(cfqq);
-
-	if (cfqq->queued[0] + cfqq->queued[1] >= 4)
-		cfq_mark_cfqq_deep(cfqq);
-
-	if (cfqq->next_rq && req_noidle(cfqq->next_rq))
-		enable_idle = 0;
-	else if (!atomic_read(&cic->icq.ioc->active_ref) ||
-		 !cfqd->cfq_slice_idle ||
-		 (!cfq_cfqq_deep(cfqq)))
-		enable_idle = 0;
-	else if (sample_valid(cic->ttime.ttime_samples)) {
-		if (cic->ttime.ttime_mean > cfqd->cfq_slice_idle)
-			enable_idle = 0;
-		else
-			enable_idle = 1;
-	}
-
-	if (old_idle != enable_idle) {
-		cfq_log_cfqq(cfqd, cfqq, "idle=%d", enable_idle);
-		if (enable_idle)
-			cfq_mark_cfqq_idle_window(cfqq);
-		else
-			cfq_clear_cfqq_idle_window(cfqq);
-	}
+	cfq_clear_cfqq_idle_window(cfqq);
 }
 
 /*
@@ -3779,17 +3603,12 @@ static void cfq_completed_request(struct request_queue *q, struct request *rq)
 	 * or if we want to idle in case it has no pending requests.
 	 */
 	if (cfqd->active_queue == cfqq) {
-		const bool cfqq_empty = RB_EMPTY_ROOT(&cfqq->sort_list);
 
 		if (cfq_cfqq_slice_new(cfqq)) {
 			cfq_set_prio_slice(cfqd, cfqq);
 			cfq_clear_cfqq_slice_new(cfqq);
 		}
 
-		/*
-		 * Should we wait for next request to come in before we expire
-		 * the queue.
-		 */
 		if (cfq_should_wait_busy(cfqd, cfqq)) {
 			u64 extend_sl = cfqd->cfq_slice_idle;
 			if (!cfqd->cfq_slice_idle)
@@ -3800,19 +3619,11 @@ static void cfq_completed_request(struct request_queue *q, struct request *rq)
 		}
 
 		/*
-		 * Idling is not enabled on:
-		 * - expired queues
-		 * - idle-priority queues
-		 * - async queues
-		 * - queues with still some requests queued
-		 * - when there is a close cooperator
-		 */
-		if (cfq_slice_used(cfqq) || cfq_class_idle(cfqq))
-			cfq_slice_expired(cfqd, 1);
-		else if (sync && cfqq_empty &&
-			 !cfq_close_cooperator(cfqd, cfqq)) {
-			cfq_arm_slice_timer(cfqd);
-		}
+         * Expire if slice used or idle class - no idling timer
+         */
+        if (cfq_slice_used(cfqq) || cfq_class_idle(cfqq))
+            cfq_slice_expired(cfqd, 1);
+        
 	}
 
 	if (!cfqd->rq_in_driver)
@@ -3996,76 +3807,10 @@ static void cfq_kick_queue(struct work_struct *work)
 	spin_unlock_irq(q->queue_lock);
 }
 
-/*
- * Timer running if the active_queue is currently idling inside its time slice
- */
-static enum hrtimer_restart cfq_idle_slice_timer(struct hrtimer *timer)
-{
-	struct cfq_data *cfqd = container_of(timer, struct cfq_data,
-					     idle_slice_timer);
-	struct cfq_queue *cfqq;
-	unsigned long flags;
-	int timed_out = 1;
-
-	cfq_log(cfqd, "idle timer fired");
-
-	spin_lock_irqsave(cfqd->queue->queue_lock, flags);
-
-	cfqq = cfqd->active_queue;
-	if (cfqq) {
-		timed_out = 0;
-
-		/*
-		 * We saw a request before the queue expired, let it through
-		 */
-		if (cfq_cfqq_must_dispatch(cfqq))
-			goto out_kick;
-
-		/*
-		 * expired
-		 */
-		if (cfq_slice_used(cfqq))
-			goto expire;
-
-		/*
-		 * only expire and reinvoke request handler, if there are
-		 * other queues with pending requests
-		 */
-		if (!cfqd->busy_queues)
-			goto out_cont;
-
-		/*
-		 * not expired and it has a request pending, let it dispatch
-		 */
-		if (!RB_EMPTY_ROOT(&cfqq->sort_list))
-			goto out_kick;
-
-		/*
-		 * Queue depth flag is reset only when the idle didn't succeed
-		 */
-		cfq_clear_cfqq_deep(cfqq);
-	}
-expire:
-	cfq_slice_expired(cfqd, timed_out);
-out_kick:
-	cfq_schedule_dispatch(cfqd);
-out_cont:
-	spin_unlock_irqrestore(cfqd->queue->queue_lock, flags);
-	return HRTIMER_NORESTART;
-}
-
-static void cfq_shutdown_timer_wq(struct cfq_data *cfqd)
-{
-	hrtimer_cancel(&cfqd->idle_slice_timer);
-	cancel_work_sync(&cfqd->unplug_work);
-}
-
 static void cfq_exit_queue(struct elevator_queue *e)
 {
 	struct cfq_data *cfqd = e->elevator_data;
 	struct request_queue *q = cfqd->queue;
-
-	cfq_shutdown_timer_wq(cfqd);
 
 	spin_lock_irq(q->queue_lock);
 
@@ -4073,8 +3818,6 @@ static void cfq_exit_queue(struct elevator_queue *e)
 		__cfq_slice_expired(cfqd, cfqd->active_queue, 0);
 
 	spin_unlock_irq(q->queue_lock);
-
-	cfq_shutdown_timer_wq(cfqd);
 
 	blkcg_deactivate_policy(q, &blkcg_policy_cfq);
 	kfree(cfqd);
@@ -4136,10 +3879,6 @@ static int cfq_init_queue(struct request_queue *q, struct elevator_type *e)
 	cfqg_put(cfqd->root_group);
 	spin_unlock_irq(q->queue_lock);
 
-	hrtimer_init(&cfqd->idle_slice_timer, CLOCK_MONOTONIC,
-		     HRTIMER_MODE_REL);
-	cfqd->idle_slice_timer.function = cfq_idle_slice_timer;
-
 	INIT_WORK(&cfqd->unplug_work, cfq_kick_queue);
 
 	cfqd->cfq_quantum = cfq_quantum;
@@ -4174,8 +3913,10 @@ static void cfq_registered_queue(struct request_queue *q)
 	/*
 	 * Default to IOPS mode with no idling for SSDs
 	 */
-	if (blk_queue_nonrot(q))
+	if (blk_queue_nonrot(q)) {
 		cfqd->cfq_slice_idle = 0;
+		cfqd->cfq_group_idle = 0;
+	}
 	wbt_disable_default(q);
 }
 
