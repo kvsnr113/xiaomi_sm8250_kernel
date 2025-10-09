@@ -392,7 +392,6 @@ config ARCH_WANT_FRAME_POINTERS
 config FRAME_POINTER
 	bool "Compile the kernel with frame pointers"
 	depends on DEBUG_KERNEL && (M68K || UML || SUPERH) || ARCH_WANT_FRAME_POINTERS
-	default y if (DEBUG_INFO && UML) || ARCH_WANT_FRAME_POINTERS
 	help
 	  If you say Y here the resulting kernel image will be slightly
 	  larger and slower, but it gives very useful debugging information
