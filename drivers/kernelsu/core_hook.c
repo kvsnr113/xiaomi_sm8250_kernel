@@ -466,7 +466,8 @@ int ksu_handle_prctl(int option, unsigned long arg2, unsigned long arg3,
 		case EVENT_POST_FS_DATA: {
 			static bool post_fs_data_lock = false;
 #ifdef CONFIG_KSU_SUSFS
-			susfs_on_post_fs_data();
+			if (e404_data.susfs)
+				susfs_on_post_fs_data();
 #endif
 			if (!post_fs_data_lock) {
 				post_fs_data_lock = true;
@@ -586,23 +587,23 @@ int ksu_handle_prctl(int option, unsigned long arg2, unsigned long arg3,
 	}
 #endif
 #ifdef CONFIG_KSU_SUSFS
-	if (current_uid_val == 0) {
-#ifdef CONFIG_KSU_SUSFS_SUS_PATH
-		if (arg2 == CMD_SUSFS_ADD_SUS_PATH) {
-			int error = 0;
-			if (!ksu_access_ok((void __user*)arg3, sizeof(struct st_susfs_sus_path))) {
-				pr_err("susfs: CMD_SUSFS_ADD_SUS_PATH -> arg3 is not accessible\n");
+		if (current_uid_val == 0 && e404_data.susfs) {
+	#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+			if (arg2 == CMD_SUSFS_ADD_SUS_PATH) {
+				int error = 0;
+				if (!ksu_access_ok((void __user*)arg3, sizeof(struct st_susfs_sus_path))) {
+					pr_err("susfs: CMD_SUSFS_ADD_SUS_PATH -> arg3 is not accessible\n");
+					return 0;
+				}
+				if (!ksu_access_ok((void __user*)arg5, sizeof(error))) {
+					pr_err("susfs: CMD_SUSFS_ADD_SUS_PATH -> arg5 is not accessible\n");
+					return 0;
+				}
+				error = susfs_add_sus_path((struct st_susfs_sus_path __user*)arg3);
+				pr_info("susfs: CMD_SUSFS_ADD_SUS_PATH -> ret: %d\n", error);
+				if (copy_to_user((void __user*)arg5, &error, sizeof(error)))
+					pr_info("susfs: copy_to_user() failed\n");
 				return 0;
-			}
-			if (!ksu_access_ok((void __user*)arg5, sizeof(error))) {
-				pr_err("susfs: CMD_SUSFS_ADD_SUS_PATH -> arg5 is not accessible\n");
-				return 0;
-			}
-			error = susfs_add_sus_path((struct st_susfs_sus_path __user*)arg3);
-			pr_info("susfs: CMD_SUSFS_ADD_SUS_PATH -> ret: %d\n", error);
-			if (copy_to_user((void __user*)arg5, &error, sizeof(error)))
-				pr_info("susfs: copy_to_user() failed\n");
-			return 0;
 		}
 #endif //#ifdef CONFIG_KSU_SUSFS_SUS_PATH
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT

@@ -3,6 +3,10 @@
 
 #include <linux/bits.h>
 
+#ifdef CONFIG_E404_SIGNATURE
+#include <linux/e404_attributes.h>
+#endif
+
 /********/
 /* ENUM */
 /********/
