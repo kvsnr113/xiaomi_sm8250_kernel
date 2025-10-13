@@ -32,24 +32,8 @@ static const int cfq_back_penalty = 2;
 static const u64 cfq_slice_sync = NSEC_PER_SEC / 10;
 static u64 cfq_slice_async = NSEC_PER_SEC / 25;
 static const int cfq_slice_async_rq = 2;
-static u64 cfq_slice_idle = 0;
-static u64 cfq_group_idle = 0;
 static const u64 cfq_target_latency = (u64)NSEC_PER_SEC * 3/10; /* 300 ms */
 static const int cfq_hist_divisor = 4;
-
-/*
- * offset from end of queue service tree for idle class
- */
-#define CFQ_IDLE_DELAY		(NSEC_PER_SEC / 5)
-/* offset from end of group service tree under time slice mode */
-#define CFQ_SLICE_MODE_GROUP_DELAY (NSEC_PER_SEC / 5)
-/* offset from end of group service under IOPS mode */
-#define CFQ_IOPS_MODE_GROUP_DELAY (HZ / 5)
-
-/*
- * below this threshold, we consider thinktime immediate
- */
-#define CFQ_MIN_TT		(2 * NSEC_PER_SEC / HZ)
 
 #define CFQ_SLICE_SCALE		(5)
 #define CFQ_HW_QUEUE_MIN	(5)
@@ -202,7 +186,6 @@ struct cfq_group_data {
 
 	unsigned int weight;
 	unsigned int leaf_weight;
-	u64 group_idle;
 };
 
 /* This is per cgroup per device grouping structure */
@@ -288,7 +271,6 @@ struct cfq_group {
 	struct cfq_queue *async_cfqq[2][IOPRIO_BE_NR];
 	struct cfq_queue *async_idle_cfqq;
 
-	u64 group_idle;
 };
 
 struct cfq_io_cq {
@@ -346,7 +328,6 @@ struct cfq_data {
 	/*
 	 * idle window management
 	 */
-	struct hrtimer idle_slice_timer;
 	struct work_struct unplug_work;
 
 	struct cfq_queue *active_queue;
@@ -364,8 +345,6 @@ struct cfq_data {
 	unsigned int cfq_latency;
 	u64 cfq_fifo_expire[2];
 	u64 cfq_slice[2];
-	u64 cfq_slice_idle;
-	u64 cfq_group_idle;
 	u64 cfq_target_latency;
 
 	/*
@@ -398,7 +377,6 @@ enum cfqq_state_flags {
 	CFQ_CFQQ_FLAG_must_dispatch,	/* must be allowed a dispatch */
 	CFQ_CFQQ_FLAG_must_alloc_slice,	/* per-slice must_alloc flag */
 	CFQ_CFQQ_FLAG_fifo_expire,	/* FIFO checked in this slice */
-	CFQ_CFQQ_FLAG_idle_window,	/* slice idling enabled */
 	CFQ_CFQQ_FLAG_prio_changed,	/* task priority has changed */
 	CFQ_CFQQ_FLAG_slice_new,	/* no requests dispatched in slice */
 	CFQ_CFQQ_FLAG_sync,		/* synchronous queue */
@@ -427,7 +405,6 @@ CFQ_CFQQ_FNS(wait_request);
 CFQ_CFQQ_FNS(must_dispatch);
 CFQ_CFQQ_FNS(must_alloc_slice);
 CFQ_CFQQ_FNS(fifo_expire);
-CFQ_CFQQ_FNS(idle_window);
 CFQ_CFQQ_FNS(prio_changed);
 CFQ_CFQQ_FNS(slice_new);
 CFQ_CFQQ_FNS(sync);
@@ -569,14 +546,6 @@ static void cfqg_stats_xfer_dead(struct cfq_group *cfqg)
 	cfqg_stats_reset(&cfqg->stats);
 }
 
-static inline u64 get_group_idle(struct cfq_data *cfqd)
-{
-	struct cfq_queue *cfqq = cfqd->active_queue;
-
-	if (cfqq && cfqq->cfqg)
-		return cfqq->cfqg->group_idle;
-	return cfqd->cfq_group_idle;
-}
 /* Traverses through cfq group service trees */
 #define for_each_cfqg_st(cfqg, i, j, st) \
 	for (i = 0; i <= IDLE_WORKLOAD; i++) \
@@ -590,26 +559,19 @@ static inline u64 get_group_idle(struct cfq_data *cfqd)
 static inline bool cfq_io_thinktime_big(struct cfq_data *cfqd,
 	struct cfq_ttime *ttime, bool group_idle)
 {
-	u64 slice;
-	if (!sample_valid(ttime->ttime_samples))
-		return false;
-	if (group_idle)
-		slice = get_group_idle(cfqd);
-	else
-		slice = cfqd->cfq_slice_idle;
-	return ttime->ttime_mean > slice;
+	return false;
 }
 
 static inline bool iops_mode(struct cfq_data *cfqd)
 {
 	/*
-	 * If we are not idling on queues and it is a NCQ drive, parallel
-	 * execution of requests is on and measuring time is not possible
-	 * in most of the cases until and unless we drive shallower queue
-	 * depths and that becomes a performance bottleneck. In such cases
-	 * switch to start providing fairness in terms of number of IOs.
+	 * If it is a NCQ drive, parallel execution of requests is on
+	 * and measuring time is not possible in most of the cases until
+	 * and unless we drive shallower queue depths and that becomes
+	 * a performance bottleneck. In such cases switch to start
+	 * providing fairness in terms of number of IOs.
 	 */
-	if (!cfqd->cfq_slice_idle && cfqd->hw_tag)
+	if (cfqd->hw_tag)
 		return true;
 	else
 		return false;
@@ -791,33 +753,7 @@ cfq_group_slice(struct cfq_data *cfqd, struct cfq_group *cfqg)
 static inline u64
 cfq_scaled_cfqq_slice(struct cfq_data *cfqd, struct cfq_queue *cfqq)
 {
-	u64 slice = cfq_prio_to_slice(cfqd, cfqq);
-	if (cfqd->cfq_latency) {
-		/*
-		 * interested queues (we consider only the ones with the same
-		 * priority class in the cfq group)
-		 */
-		unsigned iq = cfq_group_get_avg_queues(cfqd, cfqq->cfqg,
-						cfq_class_rt(cfqq));
-		u64 sync_slice = cfqd->cfq_slice[1];
-		u64 expect_latency = sync_slice * iq;
-		u64 group_slice = cfq_group_slice(cfqd, cfqq->cfqg);
-
-		if (expect_latency > group_slice) {
-			u64 base_low_slice = 2 * cfqd->cfq_slice_idle;
-			u64 low_slice;
-
-			/* scale low_slice according to IO priority
-			 * and sync vs async */
-			low_slice = div64_u64(base_low_slice*slice, sync_slice);
-			low_slice = min(slice, low_slice);
-			/* the adapted slice value is scaled to fit all iqs
-			 * into the target latency */
-			slice = div64_u64(slice*group_slice, expect_latency);
-			slice = max(slice, low_slice);
-		}
-	}
-	return slice;
+	return cfq_prio_to_slice(cfqd, cfqq);
 }
 
 static inline void
@@ -1330,7 +1266,6 @@ static void cfq_cpd_init(struct blkcg_policy_data *cpd)
 
 	cgd->weight = weight;
 	cgd->leaf_weight = weight;
-	cgd->group_idle = cfq_group_idle;
 }
 
 static void cfq_cpd_free(struct blkcg_policy_data *cpd)
@@ -1375,7 +1310,6 @@ static void cfq_pd_init(struct blkg_policy_data *pd)
 
 	cfqg->weight = cgd->weight;
 	cfqg->leaf_weight = cgd->leaf_weight;
-	cfqg->group_idle = cgd->group_idle;
 }
 
 static void cfq_pd_offline(struct blkg_policy_data *pd)
@@ -1494,19 +1428,6 @@ static int cfq_print_leaf_weight(struct seq_file *sf, void *v)
 		val = cgd->leaf_weight;
 
 	seq_printf(sf, "%u\n", val);
-	return 0;
-}
-
-static int cfq_print_group_idle(struct seq_file *sf, void *v)
-{
-	struct blkcg *blkcg = css_to_blkcg(seq_css(sf));
-	struct cfq_group_data *cgd = blkcg_to_cfqgd(blkcg);
-	u64 val = 0;
-
-	if (cgd)
-		val = cgd->group_idle;
-
-	seq_printf(sf, "%llu\n", div_u64(val, NSEC_PER_USEC));
 	return 0;
 }
 
@@ -1631,37 +1552,6 @@ static int cfq_set_leaf_weight(struct cgroup_subsys_state *css,
 	return __cfq_set_weight(css, val, false, false, true);
 }
 
-static int cfq_set_group_idle(struct cgroup_subsys_state *css,
-			       struct cftype *cft, u64 val)
-{
-	struct blkcg *blkcg = css_to_blkcg(css);
-	struct cfq_group_data *cfqgd;
-	struct blkcg_gq *blkg;
-	int ret = 0;
-
-	spin_lock_irq(&blkcg->lock);
-	cfqgd = blkcg_to_cfqgd(blkcg);
-	if (!cfqgd) {
-		ret = -EINVAL;
-		goto out;
-	}
-
-	cfqgd->group_idle = val * NSEC_PER_USEC;
-
-	hlist_for_each_entry(blkg, &blkcg->blkg_list, blkcg_node) {
-		struct cfq_group *cfqg = blkg_to_cfqg(blkg);
-
-		if (!cfqg)
-			continue;
-
-		cfqg->group_idle = cfqgd->group_idle;
-	}
-
-out:
-	spin_unlock_irq(&blkcg->lock);
-	return ret;
-}
-
 static int cfqg_print_stat(struct seq_file *sf, void *v)
 {
 	blkcg_print_blkgs(sf, css_to_blkcg(seq_css(sf)), blkg_prfill_stat,
@@ -1780,11 +1670,6 @@ static struct cftype cfq_blkcg_legacy_files[] = {
 		.name = "leaf_weight",
 		.seq_show = cfq_print_leaf_weight,
 		.write_u64 = cfq_set_leaf_weight,
-	},
-	{
-		.name = "group_idle",
-		.seq_show = cfq_print_group_idle,
-		.write_u64 = cfq_set_group_idle,
 	},
 
 	/* statistics, covers only the tasks in the cfqg */
@@ -2322,7 +2207,6 @@ static int cfq_allow_rq_merge(struct request_queue *q, struct request *rq,
 
 static inline void cfq_del_timer(struct cfq_data *cfqd, struct cfq_queue *cfqq)
 {
-	hrtimer_try_to_cancel(&cfqd->idle_slice_timer);
 }
 
 static void __cfq_set_active_queue(struct cfq_data *cfqd,
@@ -2575,113 +2459,6 @@ static struct cfq_queue *cfq_close_cooperator(struct cfq_data *cfqd,
 }
 
 /*
- * Determine whether we should enforce idle window for this queue.
- */
-
-static bool cfq_should_idle(struct cfq_data *cfqd, struct cfq_queue *cfqq)
-{
-	enum wl_class_t wl_class = cfqq_class(cfqq);
-	struct cfq_rb_root *st = cfqq->service_tree;
-
-	BUG_ON(!st);
-	BUG_ON(!st->count);
-
-	if (!cfqd->cfq_slice_idle)
-		return false;
-
-	/* We never do for idle class queues. */
-	if (wl_class == IDLE_WORKLOAD)
-		return false;
-
-	/* We do for queues that were marked with idle window flag. */
-	if (cfq_cfqq_idle_window(cfqq) &&
-	   !(blk_queue_nonrot(cfqd->queue) && cfqd->hw_tag))
-		return true;
-
-	/*
-	 * Otherwise, we do only if they are the last ones
-	 * in their service tree.
-	 */
-	if (st->count == 1 && cfq_cfqq_sync(cfqq) &&
-	   !cfq_io_thinktime_big(cfqd, &st->ttime, false))
-		return true;
-	return false;
-}
-
-static void cfq_arm_slice_timer(struct cfq_data *cfqd)
-{
-	struct cfq_queue *cfqq = cfqd->active_queue;
-	struct cfq_rb_root *st = cfqq->service_tree;
-	struct cfq_io_cq *cic;
-	u64 sl, group_idle = 0;
-	u64 now = ktime_get_ns();
-
-	/*
-	 * SSD device without seek penalty, disable idling. But only do so
-	 * for devices that support queuing, otherwise we still have a problem
-	 * with sync vs async workloads.
-	 */
-	if (blk_queue_nonrot(cfqd->queue) && cfqd->hw_tag &&
-		!get_group_idle(cfqd))
-		return;
-
-	WARN_ON(!RB_EMPTY_ROOT(&cfqq->sort_list));
-	WARN_ON(cfq_cfqq_slice_new(cfqq));
-
-	/*
-	 * idle is disabled, either manually or by past process history
-	 */
-	if (!cfq_should_idle(cfqd, cfqq)) {
-		/* no queue idling. Check for group idling */
-		group_idle = get_group_idle(cfqd);
-		if (!group_idle)
-			return;
-	}
-
-	/*
-	 * still active requests from this queue, don't idle
-	 */
-	if (cfqq->dispatched)
-		return;
-
-	/*
-	 * task has exited, don't wait
-	 */
-	cic = cfqd->active_cic;
-	if (!cic || !atomic_read(&cic->icq.ioc->active_ref))
-		return;
-
-	/*
-	 * If our average think time is larger than the remaining time
-	 * slice, then don't idle. This avoids overrunning the allotted
-	 * time slice.
-	 */
-	if (sample_valid(cic->ttime.ttime_samples) &&
-	    (cfqq->slice_end - now < cic->ttime.ttime_mean)) {
-		return;
-	}
-
-	/*
-	 * There are other queues in the group or this is the only group and
-	 * it has too big thinktime, don't do group idle.
-	 */
-	if (group_idle &&
-	    (cfqq->cfqg->nr_cfqq > 1 ||
-	     cfq_io_thinktime_big(cfqd, &st->ttime, true)))
-		return;
-
-	cfq_mark_cfqq_wait_request(cfqq);
-
-	if (group_idle)
-		sl = group_idle;
-	else
-		sl = cfqd->cfq_slice_idle;
-
-	hrtimer_start(&cfqd->idle_slice_timer, ns_to_ktime(sl),
-		      HRTIMER_MODE_REL);
-}
-
-/*
  * Move request from internal lists to the request queue dispatch list.
  */
 static void cfq_dispatch_insert(struct request_queue *q, struct request *rq)
@@ -2884,12 +2661,7 @@ new_workload:
 		/* async workload slice is scaled down according to
 		 * the sync/async slice ratio. */
 		slice = div64_u64(slice*cfqd->cfq_slice[0], cfqd->cfq_slice[1]);
-	} else
-		/* sync workload slice is at least 2 * cfq_slice_idle */
-		slice = max(slice, 2 * cfqd->cfq_slice_idle);
-
-	slice = max_t(u64, slice, CFQ_MIN_TT);
-	cfqd->workload_expires = now + slice;
+	}
 }
 
 static struct cfq_group *cfq_get_next_cfqg(struct cfq_data *cfqd)
@@ -2929,7 +2701,6 @@ static void cfq_choose_cfqg(struct cfq_data *cfqd)
 static struct cfq_queue *cfq_select_queue(struct cfq_data *cfqd)
 {
 	struct cfq_queue *cfqq, *new_cfqq = NULL;
-	u64 now = ktime_get_ns();
 
 	cfqq = cfqd->active_queue;
 	if (!cfqq)
@@ -2954,15 +2725,15 @@ static struct cfq_queue *cfq_select_queue(struct cfq_data *cfqd)
 		 * the queue yet. Allow the group to get backlogged.
 		 *
 		 * The very fact that we have used the slice, that means we
-		 * have been idling all along on this queue and it should be
+		 * have been dispatching from this queue and it should be
 		 * ok to wait for this request to complete.
 		 */
 		if (cfqq->cfqg->nr_cfqq == 1 && RB_EMPTY_ROOT(&cfqq->sort_list)
-		    && cfqq->dispatched && cfq_should_idle(cfqd, cfqq)) {
+		    && cfqq->dispatched) {
 			cfqq = NULL;
 			goto keep_queue;
 		} else
-			goto check_group_idle;
+			goto expire;
 	}
 
 	/*
@@ -2986,39 +2757,9 @@ static struct cfq_queue *cfq_select_queue(struct cfq_data *cfqd)
 	}
 
 	/*
-	 * No requests pending. If the active queue still has requests in
-	 * flight or is idling for a new request, allow either of these
-	 * conditions to happen (or time out) before selecting a new queue.
+	 * No requests pending. Check if queue still has dispatched requests.
 	 */
-	if (hrtimer_active(&cfqd->idle_slice_timer)) {
-		cfqq = NULL;
-		goto keep_queue;
-	}
-
-	/*
-	 * This is a deep seek queue, but the device is much faster than
-	 * the queue can deliver, don't idle
-	 **/
-	if (CFQQ_SEEKY(cfqq) && cfq_cfqq_idle_window(cfqq) &&
-	    (cfq_cfqq_slice_new(cfqq) ||
-	    (cfqq->slice_end - now > now - cfqq->slice_start))) {
-		cfq_clear_cfqq_deep(cfqq);
-		cfq_clear_cfqq_idle_window(cfqq);
-	}
-
-	if (cfqq->dispatched && cfq_should_idle(cfqd, cfqq)) {
-		cfqq = NULL;
-		goto keep_queue;
-	}
-
-	/*
-	 * If group idle is enabled and there are requests dispatched from
-	 * this group, wait for requests to complete.
-	 */
-check_group_idle:
-	if (get_group_idle(cfqd) && cfqq->cfqg->nr_cfqq == 1 &&
-	    cfqq->cfqg->dispatched &&
-	    !cfq_io_thinktime_big(cfqd, &cfqq->cfqg->ttime, true)) {
+	if (cfqq->dispatched) {
 		cfqq = NULL;
 		goto keep_queue;
 	}
@@ -3083,8 +2824,14 @@ static inline bool cfq_slice_used_soon(struct cfq_data *cfqd,
 	/* the queue hasn't finished any request, can't estimate */
 	if (cfq_cfqq_slice_new(cfqq))
 		return true;
-	if (now + cfqd->cfq_slice_idle * cfqq->dispatched > cfqq->slice_end)
-		return true;
+	
+	/* Simple heuristic: if we're past 75% of the slice, consider it "soon" */
+	if (cfqq->slice_end > now) {
+		u64 remaining = cfqq->slice_end - now;
+		u64 total = cfqq->allocated_slice;
+		if (total > 0 && remaining < (total / 4))
+			return true;
+	}
 
 	return false;
 }
@@ -3095,12 +2842,6 @@ static bool cfq_may_dispatch(struct cfq_data *cfqd, struct cfq_queue *cfqq)
 
 	if (cfq_cfqq_must_dispatch(cfqq))
 		return true;
-
-	/*
-	 * Drain async requests before we start sync IO
-	 */
-	if (cfq_should_idle(cfqd, cfqq) && cfqd->rq_in_flight[BLK_RW_ASYNC])
-		return false;
 
 	/*
 	 * If this is an async queue and we have sync IO in flight, let it wait
@@ -3176,6 +2917,7 @@ static bool cfq_may_dispatch(struct cfq_data *cfqd, struct cfq_queue *cfqq)
 	 */
 	return cfqq->dispatched < max_dispatch;
 }
+
 
 /*
  * Dispatch a request from cfqq, moving them to the request queue
@@ -3546,30 +3288,6 @@ out:
 }
 
 static void
-__cfq_update_io_thinktime(struct cfq_ttime *ttime, u64 slice_idle)
-{
-	u64 elapsed = ktime_get_ns() - ttime->last_end_request;
-	elapsed = min(elapsed, 2UL * slice_idle);
-
-	ttime->ttime_samples = (7*ttime->ttime_samples + 256) / 8;
-	ttime->ttime_total = div_u64(7*ttime->ttime_total + 256*elapsed,  8);
-	ttime->ttime_mean = div64_ul(ttime->ttime_total + 128,
-				     ttime->ttime_samples);
-}
-
-static void
-cfq_update_io_thinktime(struct cfq_data *cfqd, struct cfq_queue *cfqq,
-			struct cfq_io_cq *cic)
-{
-	if (cfq_cfqq_sync(cfqq)) {
-		__cfq_update_io_thinktime(&cic->ttime, cfqd->cfq_slice_idle);
-		__cfq_update_io_thinktime(&cfqq->service_tree->ttime,
-			cfqd->cfq_slice_idle);
-	}
-	__cfq_update_io_thinktime(&cfqq->cfqg->ttime, get_group_idle(cfqd));
-}
-
-static void
 cfq_update_io_seektime(struct cfq_data *cfqd, struct cfq_queue *cfqq,
 		       struct request *rq)
 {
@@ -3619,14 +3337,10 @@ cfq_update_idle_window(struct cfq_data *cfqd, struct cfq_queue *cfqq,
 	if (cfqq->next_rq && req_noidle(cfqq->next_rq))
 		enable_idle = 0;
 	else if (!atomic_read(&cic->icq.ioc->active_ref) ||
-		 !cfqd->cfq_slice_idle ||
 		 (!cfq_cfqq_deep(cfqq) && CFQQ_SEEKY(cfqq)))
 		enable_idle = 0;
 	else if (sample_valid(cic->ttime.ttime_samples)) {
-		if (cic->ttime.ttime_mean > cfqd->cfq_slice_idle)
-			enable_idle = 0;
-		else
-			enable_idle = 1;
+		enable_idle = 1;
 	}
 
 	if (old_idle != enable_idle) {
@@ -3702,7 +3416,7 @@ cfq_should_preempt(struct cfq_data *cfqd, struct cfq_queue *new_cfqq,
 		return true;
 
 	/* An idle queue should not be idle now for some reason */
-	if (RB_EMPTY_ROOT(&cfqq->sort_list) && !cfq_should_idle(cfqd, cfqq))
+	if (RB_EMPTY_ROOT(&cfqq->sort_list))
 		return true;
 
 	if (!cfqd->active_cic || !cfq_cfqq_wait_request(cfqq))
@@ -3761,7 +3475,6 @@ cfq_rq_enqueued(struct cfq_data *cfqd, struct cfq_queue *cfqq,
 	if (rq->cmd_flags & REQ_PRIO)
 		cfqq->prio_pending++;
 
-	cfq_update_io_thinktime(cfqd, cfqq, cic);
 	cfq_update_io_seektime(cfqd, cfqq, rq);
 	cfq_update_idle_window(cfqd, cfqq, cic);
 
@@ -3834,11 +3547,9 @@ static void cfq_update_hw_tag(struct cfq_data *cfqd)
 		return;
 
 	/*
-	 * If active queue hasn't enough requests and can idle, cfq might not
-	 * dispatch sufficient requests to hardware. Don't zero hw_tag in this
-	 * case
+	 * If active queue doesn't have enough requests, don't conclude yet
 	 */
-	if (cfqq && cfq_cfqq_idle_window(cfqq) &&
+	if (cfqq &&
 	    cfqq->dispatched + cfqq->queued[0] + cfqq->queued[1] <
 	    CFQ_HW_QUEUE_MIN && cfqd->rq_in_driver < CFQ_HW_QUEUE_MIN)
 		return;
@@ -3855,7 +3566,6 @@ static void cfq_update_hw_tag(struct cfq_data *cfqd)
 static bool cfq_should_wait_busy(struct cfq_data *cfqd, struct cfq_queue *cfqq)
 {
 	struct cfq_io_cq *cic = cfqd->active_cic;
-	u64 now = ktime_get_ns();
 
 	/* If the queue already has requests, don't wait */
 	if (!RB_EMPTY_ROOT(&cfqq->sort_list))
@@ -3873,20 +3583,13 @@ static bool cfq_should_wait_busy(struct cfq_data *cfqd, struct cfq_queue *cfqq)
 		return true;
 
 	/* if slice left is less than think time, wait busy */
-	if (cic && sample_valid(cic->ttime.ttime_samples)
-	    && (cfqq->slice_end - now < cic->ttime.ttime_mean))
-		return true;
+	if (cic && sample_valid(cic->ttime.ttime_samples)) {
+		u64 now = ktime_get_ns();
+		if (cfqq->slice_end - now < cic->ttime.ttime_mean)
+			return true;
+	}
 
-	/*
-	 * If think times is less than a jiffy than ttime_mean=0 and above
-	 * will not be true. It might happen that slice has not expired yet
-	 * but will expire soon (4-5 ns) during select_queue(). To cover the
-	 * case where think time is less than a jiffy, mark the queue wait
-	 * busy if only 1 jiffy is left in the slice.
-	 */
-	if (cfqq->slice_end - now <= jiffies_to_nsecs(1))
-		return true;
-
+	/* Remove the jiffy-based check - not reliable without idle timer */
 	return false;
 }
 
@@ -3929,7 +3632,7 @@ static void cfq_completed_request(struct request_queue *q, struct request *rq)
 
 	/*
 	 * If this is the active queue, check if it needs to be expired,
-	 * or if we want to idle in case it has no pending requests.
+	 * or if we want to mark it as waiting for next request.
 	 */
 	if (cfqd->active_queue == cfqq) {
 		const bool cfqq_empty = RB_EMPTY_ROOT(&cfqq->sort_list);
@@ -3944,26 +3647,19 @@ static void cfq_completed_request(struct request_queue *q, struct request *rq)
 		 * the queue.
 		 */
 		if (cfq_should_wait_busy(cfqd, cfqq)) {
-			u64 extend_sl = cfqd->cfq_slice_idle;
-			if (!cfqd->cfq_slice_idle)
-				extend_sl = get_group_idle(cfqd);
-			cfqq->slice_end = now + extend_sl;
+			/* Mark queue as waiting for next request */
 			cfq_mark_cfqq_wait_busy(cfqq);
 		}
 
 		/*
-		 * Idling is not enabled on:
-		 * - expired queues
-		 * - idle-priority queues
-		 * - async queues
-		 * - queues with still some requests queued
-		 * - when there is a close cooperator
+		 * Queue expired or idle-priority queues or async queues
+		 * or queues with still some requests queued
 		 */
 		if (cfq_slice_used(cfqq) || cfq_class_idle(cfqq))
 			cfq_slice_expired(cfqd, 1);
 		else if (sync && cfqq_empty &&
 			 !cfq_close_cooperator(cfqd, cfqq)) {
-			cfq_arm_slice_timer(cfqd);
+			/* Sync queue is empty and no close cooperator - could dispatch more */
 		}
 	}
 
@@ -4146,65 +3842,8 @@ static void cfq_kick_queue(struct work_struct *work)
 	spin_unlock_irq(q->queue_lock);
 }
 
-/*
- * Timer running if the active_queue is currently idling inside its time slice
- */
-static enum hrtimer_restart cfq_idle_slice_timer(struct hrtimer *timer)
-{
-	struct cfq_data *cfqd = container_of(timer, struct cfq_data,
-					     idle_slice_timer);
-	struct cfq_queue *cfqq;
-	unsigned long flags;
-	int timed_out = 1;
-
-	spin_lock_irqsave(cfqd->queue->queue_lock, flags);
-
-	cfqq = cfqd->active_queue;
-	if (cfqq) {
-		timed_out = 0;
-
-		/*
-		 * We saw a request before the queue expired, let it through
-		 */
-		if (cfq_cfqq_must_dispatch(cfqq))
-			goto out_kick;
-
-		/*
-		 * expired
-		 */
-		if (cfq_slice_used(cfqq))
-			goto expire;
-
-		/*
-		 * only expire and reinvoke request handler, if there are
-		 * other queues with pending requests
-		 */
-		if (!cfqd->busy_queues)
-			goto out_cont;
-
-		/*
-		 * not expired and it has a request pending, let it dispatch
-		 */
-		if (!RB_EMPTY_ROOT(&cfqq->sort_list))
-			goto out_kick;
-
-		/*
-		 * Queue depth flag is reset only when the idle didn't succeed
-		 */
-		cfq_clear_cfqq_deep(cfqq);
-	}
-expire:
-	cfq_slice_expired(cfqd, timed_out);
-out_kick:
-	cfq_schedule_dispatch(cfqd);
-out_cont:
-	spin_unlock_irqrestore(cfqd->queue->queue_lock, flags);
-	return HRTIMER_NORESTART;
-}
-
 static void cfq_shutdown_timer_wq(struct cfq_data *cfqd)
 {
-	hrtimer_cancel(&cfqd->idle_slice_timer);
 	cancel_work_sync(&cfqd->unplug_work);
 }
 
@@ -4284,10 +3923,6 @@ static int cfq_init_queue(struct request_queue *q, struct elevator_type *e)
 	cfqg_put(cfqd->root_group);
 	spin_unlock_irq(q->queue_lock);
 
-	hrtimer_init(&cfqd->idle_slice_timer, CLOCK_MONOTONIC,
-		     HRTIMER_MODE_REL);
-	cfqd->idle_slice_timer.function = cfq_idle_slice_timer;
-
 	INIT_WORK(&cfqd->unplug_work, cfq_kick_queue);
 
 	cfqd->cfq_quantum = cfq_quantum;
@@ -4299,8 +3934,6 @@ static int cfq_init_queue(struct request_queue *q, struct elevator_type *e)
 	cfqd->cfq_slice[1] = cfq_slice_sync;
 	cfqd->cfq_target_latency = cfq_target_latency;
 	cfqd->cfq_slice_async_rq = cfq_slice_async_rq;
-	cfqd->cfq_slice_idle = cfq_slice_idle;
-	cfqd->cfq_group_idle = cfq_group_idle;
 	cfqd->cfq_latency = 1;
 	cfqd->hw_tag = -1;
 	/*
@@ -4322,10 +3955,8 @@ static void cfq_registered_queue(struct request_queue *q)
 	struct cfq_data *cfqd = e->elevator_data;
 
 	/*
-	 * Default to IOPS mode with no idling for SSDs
+	 * Disable write-back throttling default for better performance
 	 */
-	if (blk_queue_nonrot(q))
-		cfqd->cfq_slice_idle = 0;
 	wbt_disable_default(q);
 }
 
@@ -4360,8 +3991,6 @@ SHOW_FUNCTION(cfq_fifo_expire_sync_show, cfqd->cfq_fifo_expire[1], 1);
 SHOW_FUNCTION(cfq_fifo_expire_async_show, cfqd->cfq_fifo_expire[0], 1);
 SHOW_FUNCTION(cfq_back_seek_max_show, cfqd->cfq_back_max, 0);
 SHOW_FUNCTION(cfq_back_seek_penalty_show, cfqd->cfq_back_penalty, 0);
-SHOW_FUNCTION(cfq_slice_idle_show, cfqd->cfq_slice_idle, 1);
-SHOW_FUNCTION(cfq_group_idle_show, cfqd->cfq_group_idle, 1);
 SHOW_FUNCTION(cfq_slice_sync_show, cfqd->cfq_slice[1], 1);
 SHOW_FUNCTION(cfq_slice_async_show, cfqd->cfq_slice[0], 1);
 SHOW_FUNCTION(cfq_slice_async_rq_show, cfqd->cfq_slice_async_rq, 0);
@@ -4377,8 +4006,6 @@ static ssize_t __FUNC(struct elevator_queue *e, char *page)		\
 	__data = div_u64(__data, NSEC_PER_USEC);			\
 	return cfq_var_show(__data, (page));				\
 }
-USEC_SHOW_FUNCTION(cfq_slice_idle_us_show, cfqd->cfq_slice_idle);
-USEC_SHOW_FUNCTION(cfq_group_idle_us_show, cfqd->cfq_group_idle);
 USEC_SHOW_FUNCTION(cfq_slice_sync_us_show, cfqd->cfq_slice[1]);
 USEC_SHOW_FUNCTION(cfq_slice_async_us_show, cfqd->cfq_slice[0]);
 USEC_SHOW_FUNCTION(cfq_target_latency_us_show, cfqd->cfq_target_latency);
@@ -4453,10 +4080,6 @@ static struct elv_fs_entry cfq_attrs[] = {
 	CFQ_ATTR(slice_async),
 	CFQ_ATTR(slice_async_us),
 	CFQ_ATTR(slice_async_rq),
-	CFQ_ATTR_RO(slice_idle),
-	CFQ_ATTR_RO(slice_idle_us),
-	CFQ_ATTR_RO(group_idle),
-	CFQ_ATTR_RO(group_idle_us),
 	CFQ_ATTR(low_latency),
 	CFQ_ATTR(target_latency),
 	CFQ_ATTR(target_latency_us),
