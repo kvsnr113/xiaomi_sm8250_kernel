@@ -91,8 +91,6 @@ fi
 # Build environment
 export ARCH="arm64"
 export SUBARCH="arm64"
-export KBUILD_BUILD_USER="vyn"
-export KBUILD_BUILD_HOST="wsl2"
 export TZ="Asia/Jakarta"
 
 # Clean previous builds
