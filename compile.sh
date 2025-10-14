@@ -199,7 +199,8 @@ setupbuild() {
         )
         
         # Export for defconfig (without ccache)
-        export CC="aarch64-elf-gcc"
+        export CROSS_COMPILE="aarch64-elf-"
+        export CROSS_COMPILE_COMPAT="arm-eabi-"
     fi
 }
 
