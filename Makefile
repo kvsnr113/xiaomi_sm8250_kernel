@@ -692,10 +692,14 @@ KBUILD_AFLAGS   += -O3 -march=armv8.2-a+lse+crypto+dotprod
 KBUILD_LDFLAGS  += -O3 --plugin-opt=O3
 KBUILD_LDFLAGS  += -mllvm -regalloc-enable-advisor=release
 KBUILD_LDFLAGS  += -mllvm -enable-ml-inliner=release
+
+KBUILD_CFLAGS   += -mcpu=cortex-a55
+KBUILD_AFLAGS   += -mcpu=cortex-a55
+KBUILD_LDFLAGS  += -mllvm -mcpu=cortex-a55
 else
-KBUILD_CFLAGS   += -O2
-KBUILD_AFLAGS   += -O2
-KBUILD_LDFLAGS  += -O2
+KBUILD_CFLAGS   += -O3 -mcpu=cortex-a76.cortex-a55
+KBUILD_AFLAGS   += -O3 -mcpu=cortex-a76.cortex-a55
+KBUILD_LDFLAGS  += -O3
 
 ifdef CONFIG_INLINE_OPTIMIZATION
 ifdef CONFIG_CC_IS_CLANG
@@ -795,6 +799,14 @@ KBUILD_CFLAGS += $(call cc-disable-warning, builtin-macro-redefined)
 KBUILD_CFLAGS += $(call cc-disable-warning, address-of-packed-member)
 
 KBUILD_CFLAGS += $(call cc-option, -fcatch-undefined-behavior)
+endif
+
+ifdef CONFIG_CC_IS_GCC
+KBUILD_CFLAGS += $(call cc-disable-warning, format)
+KBUILD_CFLAGS += $(call cc-disable-warning, address)
+KBUILD_CFLAGS += $(call cc-disable-warning, array-compare)
+KBUILD_CFLAGS += $(call cc-disable-warning, unused-result)
+KBUILD_CFLAGS += $(call cc-disable-warning, dangling-pointer)
 endif
 
 # These warnings generated too much noise in a regular build.
@@ -932,6 +944,7 @@ KBUILD_CFLAGS	+= $(CC_FLAGS_SCS)
 export CC_FLAGS_SCS
 endif
 
+ifdef CONFIG_CC_IS_CLANG
 ifdef CONFIG_LTO_CLANG
 ifdef CONFIG_LTO_CLANG_THIN
 CC_FLAGS_LTO	+= -flto=thin -fsplit-lto-unit -funified-lto
@@ -949,6 +962,7 @@ KBUILD_LDFLAGS += -mllvm -import-instr-limit=40
 # Check for frame size exceeding threshold during prolog/epilog insertion.
 ifneq ($(CONFIG_FRAME_WARN),0)
 KBUILD_LDFLAGS	+= -plugin-opt=-warn-stack-size=$(CONFIG_FRAME_WARN)
+endif
 endif
 endif
 
@@ -994,9 +1008,6 @@ KBUILD_CFLAGS	+= $(call cc-option,-fmerge-constants)
 
 # Make sure -fstack-check isn't enabled (like gentoo apparently did)
 KBUILD_CFLAGS  += $(call cc-option,-fno-stack-check,)
-
-# conserve stack if available
-KBUILD_CFLAGS   += $(call cc-option,-fconserve-stack)
 
 # disallow errors like 'EXPORT_GPL(foo);' with missing header
 KBUILD_CFLAGS   += $(call cc-option,-Werror=implicit-int)
