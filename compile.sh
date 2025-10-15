@@ -49,16 +49,16 @@ case "$*" in
 esac
 
 # Device selection using arrays
-declare -A DEVICE_MAP=(
-    ["munch"]="MUNCH:vendor/munch_defconfig"
-    ["alioth"]="ALIOTH:vendor/alioth_defconfig"
-    ["apollo"]="APOLLO:vendor/apollo_defconfig"
-    ["pipa"]="PIPA:vendor/pipa_defconfig"
-    ["lmi"]="LMI:vendor/lmi_defconfig"
-    ["umi"]="UMI:vendor/umi_defconfig"
-    ["cmi"]="CMI:vendor/cmi_defconfig"
-    ["cas"]="CAS:vendor/cas_defconfig"
-)
+    declare -A DEVICE_MAP=(
+        ["munch"]="MUNCH:vendor/munch_defconfig"
+        ["alioth"]="ALIOTH:vendor/alioth_defconfig"
+        ["apollo"]="APOLLO:vendor/apollo_defconfig"
+        ["pipa"]="PIPA:vendor/pipa_defconfig"
+        ["lmi"]="LMI:vendor/lmi_defconfig"
+        ["umi"]="UMI:vendor/umi_defconfig"
+        ["cmi"]="CMI:vendor/cmi_defconfig"
+        ["cas"]="CAS:vendor/cas_defconfig"
+    )
 
 for device in "${!DEVICE_MAP[@]}"; do
     if [[ "$*" == *"$device"* ]]; then
@@ -209,7 +209,6 @@ errorbuild() {
     send_file "$BASE_DIR/compile.log"
     send_msg "<b>! Kernel Build Error !</b>"
     clearbuild
-    rm -f "$BASE_DIR/compile.log"
     exit 1
 }
 
@@ -235,11 +234,11 @@ makebuild() {
     if [[ "$1" == "SUSFS" ]]; then
         echo "-- Compiling with SUSFS --"
         sed -i '/CONFIG_KSU_SUSFS=/c\CONFIG_KSU_SUSFS=y' out/.config
-        export CCACHE_DIR="$BASE_DIR/ccache/.ccache_susfs"
+        export CCACHE_DIR="$BASE_DIR/ccache/.ccache_susfs$TC"
     else
         echo "-- Compiling without SUSFS --"
         sed -i '/CONFIG_KSU_SUSFS=/c\CONFIG_KSU_SUSFS=n' out/.config
-        export CCACHE_DIR="$BASE_DIR/ccache/.ccache_nosusfs"
+        export CCACHE_DIR="$BASE_DIR/ccache/.ccache_nosusfs$TC"
     fi
     compilebuild
     # Show ccache stats after build
@@ -282,6 +281,7 @@ while true; do
             ;;
         2)
             TIME_START="$(date +"%s")"
+            rm -f "$BASE_DIR/compile.log"
             build_msg
             clearbuild
             makebuild "SUSFS" 2>&1 | tee -a "$BASE_DIR/compile.log"
