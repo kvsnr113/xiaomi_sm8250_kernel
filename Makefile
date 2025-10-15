@@ -820,10 +820,12 @@ endif
 # Use make W=1 to enable them (see scripts/Makefile.extrawarn)
 KBUILD_CFLAGS += $(call cc-disable-warning, unused-but-set-variable)
 
+ifeq ($(cc-name),clang)
 ifdef CONFIG_LTO_CLANG
 KBUILD_LDFLAGS += -O3 --lto-O3 --strip-debug
 else
 KBUILD_LDFLAGS += -O3 --strip-debug
+endif
 endif
 
 KBUILD_CFLAGS += $(call cc-disable-warning, unused-const-variable)
@@ -951,7 +953,7 @@ KBUILD_CFLAGS	+= $(CC_FLAGS_SCS)
 export CC_FLAGS_SCS
 endif
 
-ifdef CONFIG_CC_IS_CLANG
+ifeq ($(cc-name),clang)
 ifdef CONFIG_LTO_CLANG
 ifdef CONFIG_LTO_CLANG_THIN
 CC_FLAGS_LTO	+= -flto=thin -fsplit-lto-unit -funified-lto
