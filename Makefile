@@ -694,18 +694,15 @@ else ifeq ($(cc-name),clang)
 KBUILD_CFLAGS   += -mllvm -hot-cold-split=true
 # Enable MLGO optimizations for register allocation
 KBUILD_CFLAGS   += -mllvm -regalloc-enable-advisor=release
-KBUILD_CFLAGS   += -O3 -march=armv8.2-a+lse+crypto+dotprod
-KBUILD_AFLAGS   += -O3 -march=armv8.2-a+lse+crypto+dotprod
-KBUILD_LDFLAGS  += -O3 --plugin-opt=O3
 KBUILD_LDFLAGS  += -mllvm -regalloc-enable-advisor=release
 KBUILD_LDFLAGS  += -mllvm -enable-ml-inliner=release
 
-KBUILD_CFLAGS   += -mcpu=cortex-a55
-KBUILD_AFLAGS   += -mcpu=cortex-a55
-KBUILD_LDFLAGS  += -mllvm -mcpu=cortex-a55
+KBUILD_CFLAGS   += -O3 -mcpu=cortex-a55 -march=armv8.2-a+lse+crypto+dotprod+rcpc+rdm+crc
+KBUILD_AFLAGS   += -O3 -mcpu=cortex-a55 -march=armv8.2-a+lse+crypto+dotprod+rcpc+rdm+crc
+KBUILD_LDFLAGS  += -O3 --plugin-opt=O3 -mllvm -mcpu=cortex-a55
 else
-KBUILD_CFLAGS   += -O3 -mcpu=cortex-a76.cortex-a55
-KBUILD_AFLAGS   += -O3 -mcpu=cortex-a76.cortex-a55
+KBUILD_CFLAGS += -O3 -mcpu=cortex-a76.cortex-a55+lse+crypto+dotprod+rcpc+crc
+KBUILD_AFLAGS += -O3 -mcpu=cortex-a76.cortex-a55+lse+crypto+dotprod+rcpc+crc
 KBUILD_LDFLAGS  += -O3
 
 ifdef CONFIG_INLINE_OPTIMIZATION
@@ -714,14 +711,14 @@ KBUILD_CFLAGS	+= -mllvm -inline-threshold=2500
 KBUILD_CFLAGS	+= -mllvm -inlinehint-threshold=2000
 KBUILD_CFLAGS	+= -mllvm -unroll-threshold=1200
 else ifdef CONFIG_CC_IS_GCC
-KBUILD_CFLAGS	+= --param max-inline-insns-single=600
-KBUILD_CFLAGS	+= --param max-inline-insns-auto=750
+# KBUILD_CFLAGS	+= --param max-inline-insns-single=600
+# KBUILD_CFLAGS	+= --param max-inline-insns-auto=750
 
 # We limit inlining to 5KB on the stack.
-KBUILD_CFLAGS	+= --param large-stack-frame=12288
+ #KBUILD_CFLAGS	+= --param large-stack-frame=12288
 
-KBUILD_CFLAGS	+= --param inline-min-speedup=5
-KBUILD_CFLAGS	+= --param inline-unit-growth=60
+# KBUILD_CFLAGS	+= --param inline-min-speedup=5
+# KBUILD_CFLAGS	+= --param inline-unit-growth=60
 endif
 endif
 
