@@ -1771,8 +1771,6 @@ ssize_t fts_tp_debug_write(struct file *file, const char __user *buf, size_t cou
 		printk(KERN_INFO "%s: write proc input error.\n", __func__);
 		return -EFAULT;
 	}
-	sscanf(tmp, "%d", &XIAOMI_TP_DEBUG_EN);
-	pr_err("XIAOMI_TP_DEBUG_EN = %d\n", XIAOMI_TP_DEBUG_EN);
 	return count;
 }
 

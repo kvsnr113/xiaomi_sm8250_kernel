@@ -5228,14 +5228,20 @@ drm_hdmi_avi_infoframe_from_display_mode(struct hdmi_avi_infoframe *frame,
 					 bool is_hdmi2_sink)
 {
 	enum hdmi_picture_aspect picture_aspect;
+#ifdef CONFIG_HDMI
 	int err;
+#endif
 
 	if (!frame || !mode)
 		return -EINVAL;
 
-	err = hdmi_avi_infoframe_init(frame);
-	if (err < 0)
-		return err;
+#ifdef CONFIG_HDMI
+    err = hdmi_avi_infoframe_init(frame);
+    if (err < 0)
+        return err;
+#else
+    return -EINVAL;
+#endif
 
 	if (mode->flags & DRM_MODE_FLAG_DBLCLK)
 		frame->pixel_repeat = 1;
@@ -5412,7 +5418,9 @@ drm_hdmi_vendor_infoframe_from_display_mode(struct hdmi_vendor_infoframe *frame,
 	 */
 	bool has_hdmi_infoframe = connector ?
 		connector->display_info.has_hdmi_infoframe : false;
+#ifdef CONFIG_HDMI
 	int err;
+#endif
 	u32 s3d_flags;
 	u8 vic;
 
@@ -5438,9 +5446,13 @@ drm_hdmi_vendor_infoframe_from_display_mode(struct hdmi_vendor_infoframe *frame,
 	if (vic && s3d_flags)
 		return -EINVAL;
 
-	err = hdmi_vendor_infoframe_init(frame);
-	if (err < 0)
-		return err;
+#ifdef CONFIG_HDMI
+    err = hdmi_avi_infoframe_init(frame);
+    if (err < 0)
+        return err;
+#else
+    return -EINVAL;
+#endif
 
 	frame->vic = vic;
 	frame->s3d_struct = s3d_structure_from_display_mode(mode);
