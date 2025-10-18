@@ -762,7 +762,7 @@ static int fg_mac_write_block(struct bq_fg_chip *bq, u16 cmd, u8 *data, u8 len)
 
 	fg_print_buf("mac_write_block", t_buf, len + 2);
 
-	cksum = checksum(data, len + 2);
+	cksum = checksum(t_buf, len + 2);
 	t_buf[0] = cksum;
 	t_buf[1] = len + 4; /*buf length, cmd, CRC and len byte itself*/
 	/*write checksum and length*/

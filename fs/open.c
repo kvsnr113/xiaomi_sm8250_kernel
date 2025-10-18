@@ -349,7 +349,7 @@ SYSCALL_DEFINE4(fallocate, int, fd, int, mode, loff_t, offset, loff_t, len)
 }
 
 #if defined(CONFIG_KSU) && !defined(CONFIG_KSU_KPROBES_HOOK)
-extern __attribute__((hot, always_inline)) int ksu_handle_faccessat(int *dfd, const char __user **filename_user, int *mode,
+extern int ksu_handle_faccessat(int *dfd, const char __user **filename_user, int *mode,
 			                    int *flags);
 #endif
 /*
