@@ -81,7 +81,7 @@ struct ktz8866_led {
 		bool dimming_status;
 };
 
-static struct ktz8866_reg ktz8866_regs_conf[] = {
+static struct ktz8866_reg __maybe_unused ktz8866_regs_conf[] = {
 	{ KTZ8866_DISP_BB_LSB, 0x01 },/* LSB: limit I2C code 1009 DBV level*/
 	{ KTZ8866_DISP_BB_MSB, 0x7E },/* MSB: limit I2C code 1009 DBV level*/
 	{ KTZ8866_DISP_BC1, 0x53 },/* KTZ8866_DISP_BC1*/
