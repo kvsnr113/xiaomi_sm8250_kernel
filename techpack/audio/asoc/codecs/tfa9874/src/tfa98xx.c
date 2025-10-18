@@ -4209,8 +4209,9 @@ static int tfa98xx_i2c_probe(struct i2c_client *i2c,
 
 	/* Power up! */
     /* we should reset chip only 1 times if all reset pin connected to 1 GPIO. */
-    if (0 == tfa98xx_device_count)
+    if (0 == tfa98xx_device_count) {
     	tfa98xx_ext_reset(tfa98xx);
+	}
 
 	if ((no_start == 0) && (no_reset == 0)) {
 		ret = regmap_read(tfa98xx->regmap, 0x03, &reg);
@@ -4368,8 +4369,10 @@ static int tfa98xx_i2c_probe(struct i2c_client *i2c,
 	if (ret)
 		dev_info(&i2c->dev, "error creating sysfs files\n");
 
-    if (0 == tfa98xx_device_count)
+    if (0 == tfa98xx_device_count) {
     	tfa98xx_init_misc_device(tfa98xx);
+	}
+	
 	pr_debug("[TFA9874] %s Probe completed successfully!\n", __func__);
 
 	INIT_LIST_HEAD(&tfa98xx->list);
