@@ -703,7 +703,11 @@ KBUILD_LDFLAGS  += -O3 --plugin-opt=O3 -mllvm -mcpu=cortex-a55
 else
 KBUILD_CFLAGS += -O3 -mcpu=cortex-a76.cortex-a55+lse+crypto+dotprod+rcpc+crc
 KBUILD_AFLAGS += -O3 -mcpu=cortex-a76.cortex-a55+lse+crypto+dotprod+rcpc+crc
-KBUILD_LDFLAGS  += -O3
+KBUILD_LDFLAGS  += -O3 --plugin-opt=O3
+
+KBUILD_CFLAGS	+= -fipa-pta
+KBUILD_CFLAGS	+= -fgraphite-identity -floop-nest-optimize
+KBUILD_CFLAGS	+= $(call cc-option,-fgcse-sm)
 
 ifdef CONFIG_INLINE_OPTIMIZATION
 ifdef CONFIG_CC_IS_CLANG
