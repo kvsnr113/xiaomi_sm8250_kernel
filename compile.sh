@@ -36,10 +36,16 @@ case "$*" in
         export PATH="$BASE_DIR/toolchains/aosp-clang/bin:$PATH"
         TC="AOSP-Clang"
         ;;
-    *gcc*)
+    *eva*)
         GCC64_DIR="$BASE_DIR/toolchains/gcc/gcc-arm64/bin/"
         GCC32_DIR="$BASE_DIR/toolchains/gcc/gcc-arm/bin/"
         export PATH="$GCC64_DIR:$GCC32_DIR:/usr/bin:$PATH"
+        TC="EVA"
+        ;;
+    *gcc*)
+        GCC64_DIR="$BASE_DIR/toolchains/gcc/gcc-14.2.0-nolibc/aarch64-linux/bin"
+        GCC32_DIR="$BASE_DIR/toolchains/gcc/gcc-14.2.0-nolibc/arm-linux-gnueabi/bin"
+        export PATH="$GCC64_DIR:$GCC32_DIR:$PATH"
         TC="GCC"
         ;;
     *)
@@ -185,22 +191,28 @@ setupbuild() {
         export LLVM=1
         export LLVM_IAS=1
         
-    else
+    elif [[ $TC == "EVA" ]]; then
         BUILD_FLAGS=(
             CC="ccache aarch64-elf-gcc"
-            LD="aarch64-elf-ld.lld"
-            AR="llvm-ar"
-            NM="llvm-nm"
-            OBJCOPY="llvm-objcopy"
-            OBJDUMP="llvm-objdump"
-            STRIP="llvm-strip"
             CROSS_COMPILE="aarch64-elf-"
             CROSS_COMPILE_COMPAT="arm-eabi-"
         )
-        
+
         # Export for defconfig (without ccache)
+        export CC="aarch64-elf-gcc"
         export CROSS_COMPILE="aarch64-elf-"
         export CROSS_COMPILE_COMPAT="arm-eabi-"
+    else
+        BUILD_FLAGS=(
+            CC="ccache aarch64-linux-gcc"
+            CROSS_COMPILE="aarch64-linux-"
+            CROSS_COMPILE_COMPAT="arm-linux-gnueabi-"
+        )
+
+        # Export for defconfig (without ccache)
+        export CC="aarch64-linux-gcc"
+        export CROSS_COMPILE="aarch64-linux-"
+        export CROSS_COMPILE_COMPAT="arm-linux-gnueabi-"
     fi
 }
 
