@@ -194,8 +194,16 @@ setupbuild() {
     elif [[ $TC == "EVA" ]]; then
         BUILD_FLAGS=(
             CC="ccache aarch64-elf-gcc"
+            CC_COMPAT="arm-eabi-gcc"
             CROSS_COMPILE="aarch64-elf-"
             CROSS_COMPILE_COMPAT="arm-eabi-"
+            LD="aarch64-elf-ld.lld"
+            AR="llvm-ar"
+            NM="llvm-nm"
+            OBJCOPY="llvm-objcopy"
+            OBJDUMP="llvm-objdump"
+            OBJSIZE="llvm-size"
+            STRIP="llvm-strip"
         )
 
         # Export for defconfig (without ccache)
@@ -301,7 +309,6 @@ while true; do
             makebuild "NOSUSFS" 2>&1 | tee -a "$BASE_DIR/compile.log"
             zipbuild
             uploadbuild
-            rm -f "$BASE_DIR/compile.log"
             TIME_END=$(("$(date +"%s")" - "$TIME_START"))
             success_msg
             ;;
