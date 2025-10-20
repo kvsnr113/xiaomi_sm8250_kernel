@@ -185,6 +185,11 @@
 #define __no_sanitize_address
 #endif
 
+#if GCC_VERSION >= 50000
+/* Avoid reordering a top level statement */
+#define __noreorder    __attribute__((no_reorder))
+#endif
+
 #if GCC_VERSION >= 50100
 /*
  * Mark structures as requiring designated initializers.
