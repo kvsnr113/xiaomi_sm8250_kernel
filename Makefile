@@ -394,8 +394,8 @@ STRIP		= llvm-strip
 else
 CC		= $(CROSS_COMPILE)gcc
 LD		= $(CROSS_COMPILE)ld
-AR		= $(CROSS_COMPILE)ar
-NM		= $(CROSS_COMPILE)nm
+AR		?= $(CROSS_COMPILE)ar
+NM		?= $(CROSS_COMPILE)nm
 OBJCOPY		= $(CROSS_COMPILE)objcopy
 OBJDUMP		= $(CROSS_COMPILE)objdump
 READELF		= $(CROSS_COMPILE)readelf
@@ -703,9 +703,8 @@ KBUILD_LDFLAGS  += -O3 --plugin-opt=O3 -mllvm -mcpu=cortex-a55
 else
 KBUILD_CFLAGS += -O3 -mcpu=cortex-a76.cortex-a55+lse+crypto+dotprod+rcpc+crc
 KBUILD_AFLAGS += -O3 -mcpu=cortex-a76.cortex-a55+lse+crypto+dotprod+rcpc+crc
-KBUILD_LDFLAGS  += -O3 --plugin-opt=O3
+KBUILD_LDFLAGS  += -O3
 
-KBUILD_CFLAGS	+= -fipa-pta
 KBUILD_CFLAGS	+= -fgraphite-identity -floop-nest-optimize
 KBUILD_CFLAGS	+= $(call cc-option,-fgcse-sm)
 
@@ -974,6 +973,22 @@ ifneq ($(CONFIG_FRAME_WARN),0)
 KBUILD_LDFLAGS	+= -plugin-opt=-warn-stack-size=$(CONFIG_FRAME_WARN)
 endif
 endif
+endif
+
+ifdef CONFIG_LTO_GCC
+CC_FLAGS_LTO	:= -flto=jobserver -fipa-pta -fno-fat-lto-objects \
+		   -fuse-linker-plugin -fwhole-program
+KBUILD_CFLAGS	+= $(CC_FLAGS_LTO)
+LTO_LDFLAGS	:= $(CC_FLAGS_LTO) -Wno-lto-type-mismatch -Wno-psabi \
+		   -Wno-stringop-overflow -Wno-stringop-overread \
+		   -Wno-alloc-size-larger-than -flinker-output=nolto-rel
+LDFINAL		:= $(CONFIG_SHELL) $(srctree)/scripts/gcc-ld $(LTO_LDFLAGS)
+AR		:= $(CROSS_COMPILE)gcc-ar
+NM		:= $(CROSS_COMPILE)gcc-nm
+export CC_FLAGS_LTO LDFINAL
+else
+LDFINAL		:= $(LD)
+export LDFINAL
 endif
 
 ifdef CONFIG_LTO
