@@ -3,17 +3,22 @@
 #
 # link vmlinux
 #
-# vmlinux is linked from the objects selected by $(KBUILD_VMLINUX_OBJS) and
-# $(KBUILD_VMLINUX_LIBS). Most are built-in.a files from top-level directories
-# in the kernel tree, others are specified in arch/$(ARCH)/Makefile.
-# $(KBUILD_VMLINUX_LIBS) are archives which are linked conditionally
-# (not within --whole-archive), and do not require symbol indexes added.
+# vmlinux is linked from the objects selected by $(KBUILD_VMLINUX_INIT) and
+# $(KBUILD_VMLINUX_MAIN) and $(KBUILD_VMLINUX_LIBS). Most are built-in.a files
+# from top-level directories in the kernel tree, others are specified in
+# arch/$(ARCH)/Makefile. Ordering when linking is important, and
+# $(KBUILD_VMLINUX_INIT) must be first. $(KBUILD_VMLINUX_LIBS) are archives
+# which are linked conditionally (not within --whole-archive), and do not
+# require symbol indexes added.
 #
 # vmlinux
 #   ^
 #   |
-#   +--< $(KBUILD_VMLINUX_OBJS)
-#   |    +--< init/built-in.a drivers/built-in.a mm/built-in.a + more
+#   +-< $(KBUILD_VMLINUX_INIT)
+#   |   +--< init/version.o + more
+#   |
+#   +--< $(KBUILD_VMLINUX_MAIN)
+#   |    +--< drivers/built-in.a mm/built-in.a + more
 #   |
 #   +--< $(KBUILD_VMLINUX_LIBS)
 #   |    +--< lib/lib.a + more
@@ -39,29 +44,55 @@ info()
 	fi
 }
 
-# If CONFIG_LTO_CLANG is selected, collect generated symbol versions into
-# .tmp_symversions.lds
-gen_symversions()
+# Thin archive build here makes a final archive with symbol table and indexes
+# from vmlinux objects INIT and MAIN, which can be used as input to linker.
+# KBUILD_VMLINUX_LIBS archives should already have symbol table and indexes
+# added.
+#
+# Traditional incremental style of link does not require this step
+#
+# built-in.a output file
+#
+archive_builtin()
 {
-	info GEN .tmp_symversions.lds
-	rm -f .tmp_symversions.lds
+	info AR built-in.a
+	rm -f built-in.a;
+	${AR} rcsTP${KBUILD_ARFLAGS} built-in.a			\
+				${KBUILD_VMLINUX_INIT}		\
+				${KBUILD_VMLINUX_MAIN}
 
-	for o in ${KBUILD_VMLINUX_OBJS} ${KBUILD_VMLINUX_LIBS}; do
-		if [ -f ${o}.symversions ]; then
-			cat ${o}.symversions >> .tmp_symversions.lds
-		fi
-	done
+	# rebuild with llvm-ar to update the symbol table
+	if [ -n "${CONFIG_LTO_CLANG}" ]; then
+		mv -f built-in.a built-in.a.tmp
+		${LLVM_AR} rcsT${KBUILD_ARFLAGS} built-in.a $(${AR} t built-in.a.tmp)
+		rm -f built-in.a.tmp
+	fi
 }
 
-# Generate a linker script to ensure correct ordering of initcalls.
-gen_initcalls()
+# If CONFIG_LTO_CLANG is selected, generate a linker script to ensure correct
+# ordering of initcalls, and with CONFIG_MODVERSIONS also enabled, collect the
+# previously generated symbol versions into the same script.
+lto_lds()
 {
-	info GEN .tmp_initcalls.lds
+	if [ -z "${CONFIG_LTO_CLANG}" ]; then
+		return
+	fi
 
-	${PYTHON} ${srctree}/scripts/jobserver-exec		\
-	${PERL} ${srctree}/scripts/generate_initcall_order.pl	\
-		${KBUILD_VMLINUX_OBJS} ${KBUILD_VMLINUX_LIBS}	\
-		> .tmp_initcalls.lds
+	${srctree}/scripts/generate_initcall_order.pl \
+		built-in.a ${KBUILD_VMLINUX_LIBS} \
+		> .tmp_lto.lds
+
+	if [ -n "${CONFIG_MODVERSIONS}" ]; then
+		for a in built-in.a ${KBUILD_VMLINUX_LIBS}; do
+			for o in $(${AR} t $a); do
+				if [ -f ${o}.symversions ]; then
+					cat ${o}.symversions >> .tmp_lto.lds
+				fi
+			done
+		done
+	fi
+
+	echo "-T .tmp_lto.lds"
 }
 
 # Link of vmlinux.o used for section mismatch analysis
@@ -69,32 +100,33 @@ gen_initcalls()
 modpost_link()
 {
 	local objects
-	local lds=""
 
 	objects="--whole-archive				\
-		${KBUILD_VMLINUX_OBJS}				\
-		--no-whole-archive					\
-		--start-group						\
+		built-in.a					\
+		--start-group					\
 		${KBUILD_VMLINUX_LIBS}				\
 		--end-group"
 
 	if [ -n "${CONFIG_LTO_CLANG}" ]; then
-		gen_initcalls
-		lds="-T .tmp_initcalls.lds"
-
-		if [ -n "${CONFIG_MODVERSIONS}" ]; then
-			gen_symversions
-			lds="${lds} -T .tmp_symversions.lds"
-		fi
-
 		# This might take a while, so indicate that we're doing
 		# an LTO link
-		info LTO ${1}
-	else
-		info LD ${1}
+		info LTO vmlinux.o
 	fi
 
-	${LD} ${KBUILD_LDFLAGS} -r -o ${1} ${lds} ${objects}
+	${LDFINAL} ${KBUILD_LDFLAGS} -r -o ${1} $(lto_lds) ${objects}
+}
+
+# If CONFIG_LTO_CLANG is selected, we postpone running recordmcount until
+# we have compiled LLVM IR to an object file.
+recordmcount()
+{
+	if [ -z "${CONFIG_LTO_CLANG}" ]; then
+		return
+	fi
+
+	if [ -n "${CONFIG_FTRACE_MCOUNT_RECORD}" ]; then
+		scripts/recordmcount ${RECORDMCOUNT_FLAGS} $*
+	fi
 }
 
 # Link of vmlinux
@@ -106,37 +138,33 @@ vmlinux_link()
 	local objects
 
 	if [ "${SRCARCH}" != "um" ]; then
-		if [ -n "${CONFIG_LTO_CLANG}" ]; then
-			# Use vmlinux.o instead of performing the slow LTO
-			# link again.
-			objects="--whole-archive	\
-				vmlinux.o 				\
-				--no-whole-archive		\
+		if [ -z "${CONFIG_LTO_CLANG}" ]; then
+			objects="--whole-archive		\
+				built-in.a			\
+				--start-group			\
+				${KBUILD_VMLINUX_LIBS}		\
+				--end-group			\
 				${1}"
 		else
-			objects="--whole-archive	\
-				${KBUILD_VMLINUX_OBJS}	\
-				--no-whole-archive		\
-				--start-group			\
-				${KBUILD_VMLINUX_LIBS}	\
-				--end-group
+			objects="--start-group			\
+				vmlinux.o			\
+				--end-group			\
 				${1}"
 		fi
 
-		${LD} ${KBUILD_LDFLAGS} ${LDFLAGS_vmlinux} -o ${2}	\
+		${LDFINAL} ${KBUILD_LDFLAGS} ${LDFLAGS_vmlinux} -o ${2}	\
 			-T ${lds} ${objects}
 	else
-		objects="-Wl,--whole-archive	\
-			${KBUILD_VMLINUX_OBJS}		\
-			-Wl,--no-whole-archive		\
+		objects="-Wl,--whole-archive			\
+			built-in.a				\
 			-Wl,--start-group			\
-			${KBUILD_VMLINUX_LIBS}		\
+			${KBUILD_VMLINUX_LIBS}			\
 			-Wl,--end-group				\
 			${1}"
 
-		${CC} ${CFLAGS_vmlinux} -o ${2}	\
+		${CC} ${CFLAGS_vmlinux} -o ${2}			\
 			-Wl,-T,${lds}				\
-			${objects}					\
+			${objects}				\
 			-lutil -lrt -lpthread
 		rm -f linux
 	fi
@@ -210,10 +238,10 @@ sortextable()
 cleanup()
 {
 	rm -f .tmp_System.map
-	rm -f .tmp_initcalls.lds
-	rm -f .tmp_symversions.lds
 	rm -f .tmp_kallsyms*
+	rm -f .tmp_lto.lds
 	rm -f .tmp_vmlinux*
+	rm -f built-in.a
 	rm -f System.map
 	rm -f vmlinux
 	rm -f vmlinux.o
@@ -265,11 +293,18 @@ fi;
 # final build of init/
 ${MAKE} -f "${srctree}/scripts/Makefile.build" obj=init
 
+archive_builtin
+
 #link vmlinux.o
 modpost_link vmlinux.o
 
 # modpost vmlinux.o to check for section mismatches
 ${MAKE} -f "${srctree}/scripts/Makefile.modpost" vmlinux.o
+
+if [ -n "${CONFIG_LTO_CLANG}" ]; then
+	# Call recordmcount if needed
+	recordmcount vmlinux.o
+fi
 
 # Generate RTIC MP placeholder compile unit of the correct size
 # and add it to the list of link objects
