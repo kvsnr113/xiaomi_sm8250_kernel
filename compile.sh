@@ -36,10 +36,16 @@ case "$*" in
         export PATH="$BASE_DIR/toolchains/aosp-clang/bin:$PATH"
         TC="AOSP-Clang"
         ;;
-    *gcc*)
+    *eva*)
         GCC64_DIR="$BASE_DIR/toolchains/gcc/gcc-arm64/bin/"
         GCC32_DIR="$BASE_DIR/toolchains/gcc/gcc-arm/bin/"
         export PATH="$GCC64_DIR:$GCC32_DIR:/usr/bin:$PATH"
+        TC="EVA"
+        ;;
+    *gcc*)
+        GCC64_DIR="$BASE_DIR/toolchains/gcc/gcc-14.2.0-nolibc/aarch64-linux/bin"
+        GCC32_DIR="$BASE_DIR/toolchains/gcc/gcc-14.2.0-nolibc/arm-linux-gnueabi/bin"
+        export PATH="$GCC64_DIR:$GCC32_DIR:$PATH"
         TC="GCC"
         ;;
     *)
@@ -49,16 +55,16 @@ case "$*" in
 esac
 
 # Device selection using arrays
-declare -A DEVICE_MAP=(
-    ["munch"]="MUNCH:vendor/munch_defconfig"
-    ["alioth"]="ALIOTH:vendor/alioth_defconfig"
-    ["apollo"]="APOLLO:vendor/apollo_defconfig"
-    ["pipa"]="PIPA:vendor/pipa_defconfig"
-    ["lmi"]="LMI:vendor/lmi_defconfig"
-    ["umi"]="UMI:vendor/umi_defconfig"
-    ["cmi"]="CMI:vendor/cmi_defconfig"
-    ["cas"]="CAS:vendor/cas_defconfig"
-)
+    declare -A DEVICE_MAP=(
+        ["munch"]="MUNCH:vendor/munch_defconfig"
+        ["alioth"]="ALIOTH:vendor/alioth_defconfig"
+        ["apollo"]="APOLLO:vendor/apollo_defconfig"
+        ["pipa"]="PIPA:vendor/pipa_defconfig"
+        ["lmi"]="LMI:vendor/lmi_defconfig"
+        ["umi"]="UMI:vendor/umi_defconfig"
+        ["cmi"]="CMI:vendor/cmi_defconfig"
+        ["cas"]="CAS:vendor/cas_defconfig"
+    )
 
 for device in "${!DEVICE_MAP[@]}"; do
     if [[ "$*" == *"$device"* ]]; then
@@ -91,8 +97,6 @@ fi
 # Build environment
 export ARCH="arm64"
 export SUBARCH="arm64"
-export KBUILD_BUILD_USER="vyn"
-export KBUILD_BUILD_HOST="wsl2"
 export TZ="Asia/Jakarta"
 
 # Clean previous builds
@@ -169,39 +173,54 @@ setupbuild() {
     if [[ $TC == *Clang* ]]; then
         BUILD_FLAGS=(
             CC="ccache clang"
+            CROSS_COMPILE="aarch64-linux-gnu-"
+            CROSS_COMPILE_COMPAT="arm-linux-gnueabi-"
+            LLVM=1
+            LLVM_IAS=1
             LD="ld.lld"
             AR="llvm-ar"
             NM="llvm-nm"
             OBJCOPY="llvm-objcopy"
             OBJDUMP="llvm-objdump"
             STRIP="llvm-strip"
-            LLVM=1
-            LLVM_IAS=1
-            CROSS_COMPILE="aarch64-linux-gnu-"
-            CROSS_COMPILE_ARM32="arm-linux-gnueabi-"
-            CROSS_COMPILE_COMPAT="arm-linux-gnueabi-"
         )
         
         # Export for defconfig (without ccache)
         export CC="clang"
+        export CROSS_COMPILE="aarch64-linux-gnu-"
+        export CROSS_COMPILE_COMPAT="arm-linux-gnueabi-"
         export LLVM=1
         export LLVM_IAS=1
         
-    else
+    elif [[ $TC == "EVA" ]]; then
         BUILD_FLAGS=(
             CC="ccache aarch64-elf-gcc"
+            CROSS_COMPILE="aarch64-elf-"
+            CROSS_COMPILE_COMPAT="arm-eabi-"
             LD="aarch64-elf-ld.lld"
             AR="llvm-ar"
             NM="llvm-nm"
             OBJCOPY="llvm-objcopy"
             OBJDUMP="llvm-objdump"
+            OBJSIZE="llvm-size"
             STRIP="llvm-strip"
-            CROSS_COMPILE="aarch64-elf-"
-            CROSS_COMPILE_COMPAT="arm-eabi-"
         )
-        
+
         # Export for defconfig (without ccache)
         export CC="aarch64-elf-gcc"
+        export CROSS_COMPILE="aarch64-elf-"
+        export CROSS_COMPILE_COMPAT="arm-eabi-"
+    else
+        BUILD_FLAGS=(
+            CC="ccache aarch64-linux-gcc"
+            CROSS_COMPILE="aarch64-linux-"
+            CROSS_COMPILE_COMPAT="arm-linux-gnueabi-"
+        )
+
+        # Export for defconfig (without ccache)
+        export CC="aarch64-linux-gcc"
+        export CROSS_COMPILE="aarch64-linux-"
+        export CROSS_COMPILE_COMPAT="arm-linux-gnueabi-"
     fi
 }
 
@@ -210,7 +229,6 @@ errorbuild() {
     send_file "$BASE_DIR/compile.log"
     send_msg "<b>! Kernel Build Error !</b>"
     clearbuild
-    rm -f "$BASE_DIR/compile.log"
     exit 1
 }
 
@@ -236,11 +254,11 @@ makebuild() {
     if [[ "$1" == "SUSFS" ]]; then
         echo "-- Compiling with SUSFS --"
         sed -i '/CONFIG_KSU_SUSFS=/c\CONFIG_KSU_SUSFS=y' out/.config
-        export CCACHE_DIR="$BASE_DIR/ccache/.ccache_susfs"
+        export CCACHE_DIR="$BASE_DIR/ccache/.ccache_susfs$TC"
     else
         echo "-- Compiling without SUSFS --"
         sed -i '/CONFIG_KSU_SUSFS=/c\CONFIG_KSU_SUSFS=n' out/.config
-        export CCACHE_DIR="$BASE_DIR/ccache/.ccache_nosusfs"
+        export CCACHE_DIR="$BASE_DIR/ccache/.ccache_nosusfs$TC"
     fi
     compilebuild
     # Show ccache stats after build
@@ -283,6 +301,7 @@ while true; do
             ;;
         2)
             TIME_START="$(date +"%s")"
+            rm -f "$BASE_DIR/compile.log"
             build_msg
             clearbuild
             makebuild "SUSFS" 2>&1 | tee -a "$BASE_DIR/compile.log"
@@ -290,7 +309,6 @@ while true; do
             makebuild "NOSUSFS" 2>&1 | tee -a "$BASE_DIR/compile.log"
             zipbuild
             uploadbuild
-            rm -f "$BASE_DIR/compile.log"
             TIME_END=$(("$(date +"%s")" - "$TIME_START"))
             success_msg
             ;;
