@@ -710,14 +710,11 @@ KBUILD_CFLAGS	+= -mllvm -inline-threshold=2500
 KBUILD_CFLAGS	+= -mllvm -inlinehint-threshold=2000
 KBUILD_CFLAGS	+= -mllvm -unroll-threshold=1200
 else ifdef CONFIG_CC_IS_GCC
-KBUILD_CFLAGS	+= --param max-inline-insns-single=600
-KBUILD_CFLAGS	+= --param max-inline-insns-auto=750
-
-# We limit inlining to 5KB on the stack.
-KBUILD_CFLAGS	+= --param large-stack-frame=12288
-
-KBUILD_CFLAGS	+= --param inline-min-speedup=5
-KBUILD_CFLAGS	+= --param inline-unit-growth=60
+#KBUILD_CFLAGS	+= --param max-inline-insns-single=600
+#KBUILD_CFLAGS	+= --param max-inline-insns-auto=750
+#KBUILD_CFLAGS	+= --param large-stack-frame=12288
+#KBUILD_CFLAGS	+= --param inline-min-speedup=5
+#KBUILD_CFLAGS	+= --param inline-unit-growth=60
 endif
 endif
 
