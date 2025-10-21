@@ -559,28 +559,22 @@ config LTO
 
 config LTO_CLANG
 	bool
+	depends on CC_IS_CLANG
 	select LTO
 	help
 	  Selected if the kernel will be built using Clang's LTO feature.
 
-config ARCH_SUPPORTS_LTO_CLANG
+config LTO_GCC
 	bool
+	depends on CC_IS_GCC
+	select LTO
 	help
-	  An architecture should select this option if it supports:
-	  - compiling with Clang,
-	  - compiling inline assembly with Clang's integrated assembler,
-	  - and linking with LLD.
-
-config ARCH_SUPPORTS_LTO_CLANG_THIN
-	bool
-	help
-	  An architecture should select this option if it can support Clang's
-	  ThinLTO mode.
+	  Selected if the kernel will be built using GCC’s LTO feature.
 
 config HAS_LTO_CLANG
 	def_bool y
 	# Clang >= 11: https://github.com/ClangBuiltLinux/linux/issues/510
-#	depends on CC_IS_CLANG && CLANG_VERSION >= 110000 && LD_IS_LLD
+	depends on CC_IS_CLANG && CLANG_VERSION >= 110000 && LD_IS_LLD
 #	depends on $(success,test $(LLVM) -eq 1)
 #	depends on $(success,test $(LLVM_IAS) -eq 1)
 #	depends on $(success,$(NM) --help | head -n 1 | grep -qi llvm)
@@ -593,15 +587,17 @@ config HAS_LTO_CLANG
 	  The compiler and Kconfig options support building with Clang's
 	  LTO.
 
+config HAS_LTO_GCC
+	def_bool y
+	depends on CC_IS_GCC
+
 choice
 	prompt "Link Time Optimization (LTO)"
-	default LTO_CLANG_THIN
+	default LTO_CLANG_THIN if CC_IS_CLANG
+	default LTO_NONE if CC_IS_GCC
 	help
-	  This option enables Link Time Optimization (LTO), which allows the
-	  compiler to optimize binaries globally.
-
-	  If unsure, select LTO_NONE. Note that LTO is very resource-intensive
-	  so it's disabled by default.
+	  Enables Link Time Optimization (LTO). Select the one that
+	  matches your compiler.
 
 config LTO_NONE
 	bool "None"
@@ -610,8 +606,8 @@ config LTO_NONE
 
 config LTO_CLANG_FULL
 	bool "Clang Full LTO (EXPERIMENTAL)"
-	depends on HAS_LTO_CLANG
-	depends on !COMPILE_TEST
+	depends on HAS_LTO_CLANG && ARCH_SUPPORTS_LTO_CLANG
+	depends on CC_IS_CLANG
 	select LTO_CLANG
 	help
           This option enables Clang's full Link Time Optimization (LTO), which
@@ -630,16 +626,14 @@ config LTO_CLANG_FULL
 config LTO_CLANG_THIN
 	bool "Clang ThinLTO (EXPERIMENTAL)"
 	depends on HAS_LTO_CLANG && ARCH_SUPPORTS_LTO_CLANG_THIN
+	depends on CC_IS_CLANG
 	select LTO_CLANG
-	help
-	  This option enables Clang's ThinLTO, which allows for parallel
-	  optimization and faster incremental compiles compared to the
-	  CONFIG_LTO_CLANG_FULL option. More information can be found
-	  from Clang's documentation:
 
-	    https://clang.llvm.org/docs/ThinLTO.html
-
-	  If unsure, say Y.
+config LTO_GCC_FULL
+	bool "GCC Full LTO"
+	depends on HAS_LTO_GCC
+	depends on CC_IS_GCC
+	select LTO_GCC
 endchoice
 
 config HAVE_ARCH_WITHIN_STACK_FRAMES
