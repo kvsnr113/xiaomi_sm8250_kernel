@@ -386,7 +386,7 @@ static int __fg_read_word(struct i2c_client *client, u8 reg, u16 *val)
 static int __fg_read_block(struct i2c_client *client, u8 reg, u8 *buf, u8 len)
 {
 
-	int ret;
+	int ret = 0;
 	int i;
 
 	for(i = 0; i < len; i++) {
@@ -405,7 +405,7 @@ static int __fg_read_block(struct i2c_client *client, u8 reg, u8 *buf, u8 len)
 
 static int __fg_write_block(struct i2c_client *client, u8 reg, u8 *buf, u8 len)
 {
-	int ret;
+	int ret = 0;
 	int i = 0;
 
 	for(i = 0; i < len; i++) {
@@ -1519,7 +1519,7 @@ static int fg_get_property(struct power_supply *psy, enum power_supply_property 
 					union power_supply_propval *val)
 {
 	struct bq_fg_chip *bq = power_supply_get_drvdata(psy);
-	int ret, status, rc = 0;
+	int ret, status = 0, rc = 0;
 	u16 flags;
 	int vbat_mv;
 	static bool shutdown_delay_cancel[FG_MAX_INDEX];
@@ -2622,7 +2622,7 @@ static int bq_battery_soc_smooth_tracking(struct bq_fg_chip *bq,
 	static int cold_smooth[FG_MAX_INDEX];
 	static int last_status[FG_MAX_INDEX];
 	int change_delta = 0, rc;
-	int optimiz_delta = 0, status;
+	int optimiz_delta = 0, status = 0;
 	static ktime_t last_change_time[FG_MAX_INDEX];
 	static ktime_t last_optimiz_time[FG_MAX_INDEX];
 	static ktime_t log_time;

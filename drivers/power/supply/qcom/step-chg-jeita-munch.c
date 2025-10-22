@@ -761,7 +761,7 @@ static int handle_fast_charge(struct step_chg_info *chip, int temp)
 {
 	union power_supply_propval pval = {0, };
 	static bool fast_mode_dis;
-	int rc, dc_present, is_cp_en;
+	int rc, dc_present = 0, is_cp_en = 0;
 	int pd_authen;
 
 	if (is_dc_wls_available(chip)) {

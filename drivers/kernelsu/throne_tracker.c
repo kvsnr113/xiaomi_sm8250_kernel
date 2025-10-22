@@ -353,7 +353,7 @@ static bool is_uid_exist(uid_t uid, char *package, void *data)
 
 void ksu_track_throne()
 {
-	struct file *fp;
+	struct file *fp = NULL;
 	int tries = 0;
 
 	while (tries++ < 10) {

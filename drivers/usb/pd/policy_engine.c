@@ -5665,7 +5665,7 @@ static void usbpd_pdo_workfunc(struct work_struct *w)
 {
 	struct usbpd *pd = container_of(w, struct usbpd, pdo_work);
 	int i, rc;
-	int max_volt, min_volt, max_curr;
+	int max_volt = 0, min_volt = 0, max_curr = 0;
 	int passthrough_curr_max = 0;
 	union power_supply_propval val = {0};
 	int pps_max_watts = 0;

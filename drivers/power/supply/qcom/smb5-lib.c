@@ -1984,7 +1984,7 @@ int smblib_get_irq_status(struct smb_charger *chg,
 				union power_supply_propval *val)
 {
 	int rc;
-	u8 reg;
+	u8 reg = 0;
 
 	if (chg->wa_flags & SKIP_MISC_PBS_IRQ_WA) {
 		val->intval = 0;
@@ -3639,7 +3639,7 @@ static char version[8] = "smb:01:";
 static inline void dump_reg(struct smb_charger *chg, u16 addr,
 		const char *name)
 {
-	u8 reg;
+	u8 reg = 0;
 	int rc;
 	char reg_data[50] = "";
 
@@ -5628,7 +5628,7 @@ int smblib_get_prop_usb_voltage_now(struct smb_charger *chg,
 {
 	union power_supply_propval pval = {0, };
 	int rc, ret = 0;
-	u8 reg, adc_ch_reg;
+	u8 reg = 0, adc_ch_reg = 0;
 
 	mutex_lock(&chg->adc_lock);
 
@@ -11408,7 +11408,7 @@ static void smblib_chg_termination_work(struct work_struct *work)
 	struct smb_charger *chg = container_of(work, struct smb_charger,
 						chg_termination_work);
 	int rc, input_present, delay = CHG_TERM_WA_ENTRY_DELAY_MS;
-	int vbat_now_uv, max_fv_uv, capacity_raw;
+	int vbat_now_uv, max_fv_uv, capacity_raw = 0;
 	u8 stat = 0;
 
 	/*
