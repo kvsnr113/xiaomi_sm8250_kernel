@@ -1212,7 +1212,7 @@ move_freelist_tail(struct list_head *freelist, struct page *freepage)
 	LIST_HEAD(sublist);
 
 	if (!list_is_first(freelist, &freepage->lru)) {
-		list_cut_position(&sublist, freelist, &freepage->lru);
+		list_cut_position(&sublist, freelist, freepage->lru.prev);
 		if (!list_empty(&sublist))
 			list_splice_tail(&sublist, freelist);
 	}

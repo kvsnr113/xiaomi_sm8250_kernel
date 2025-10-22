@@ -3,6 +3,9 @@
 # and is generally not a function of system call inputs.
 KCOV_INSTRUMENT		:= n
 
+# Silence dangling-pointer warning just for this directory
+subdir-ccflags-y += -Wno-dangling-pointer
+
 obj-y += mutex.o semaphore.o rwsem.o percpu-rwsem.o
 
 ifdef CONFIG_FUNCTION_TRACER

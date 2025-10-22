@@ -181,6 +181,8 @@ static int devfreq_gpubw_get_target(struct devfreq *df,
 
 	result = devfreq_update_stats(df);
 
+	stats->private_data = NULL;
+
 	*freq = stats->current_frequency;
 
 	priv->bus.total_time += stats->total_time;
