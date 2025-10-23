@@ -763,8 +763,8 @@ void release_pages(struct page **pages, int nr)
 	LIST_HEAD(pages_to_free);
 	struct pglist_data *locked_pgdat = NULL;
 	struct lruvec *lruvec;
-	unsigned long uninitialized_var(flags);
-	unsigned int uninitialized_var(lock_batch);
+	unsigned long flags = 0;
+	unsigned int lock_batch = 0;
 
 	for (i = 0; i < nr; i++) {
 		struct page *page = pages[i];
