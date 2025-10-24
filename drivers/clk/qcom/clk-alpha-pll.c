@@ -576,7 +576,7 @@ alpha_pll_find_vco(const struct clk_alpha_pll *pll, unsigned long rate)
 static unsigned long
 clk_alpha_pll_recalc_rate(struct clk_hw *hw, unsigned long parent_rate)
 {
-	u32 l, low, high, ctl;
+	u32 l = 0, low, high, ctl;
 	u64 a = 0, prate = parent_rate;
 	struct clk_alpha_pll *pll = to_clk_alpha_pll(hw);
 	u32 alpha_width = pll_alpha_width(pll);
@@ -709,7 +709,7 @@ static int __clk_alpha_pll_set_rate(struct clk_hw *hw, unsigned long rate,
 		to_clk_alpha_pll_postdiv(hw);
 	const struct pll_vco *vco;
 	const struct pll_vco_data *data;
-	u32 l, alpha_width = pll_alpha_width(pll);
+	u32 l = 0, alpha_width = pll_alpha_width(pll);
 	u64 a;
 	unsigned long rrate;
 
@@ -797,7 +797,7 @@ static long clk_alpha_pll_round_rate(struct clk_hw *hw, unsigned long rate,
 				     unsigned long *prate)
 {
 	struct clk_alpha_pll *pll = to_clk_alpha_pll(hw);
-	u32 l, alpha_width = pll_alpha_width(pll);
+	u32 l = 0, alpha_width = pll_alpha_width(pll);
 	u64 a;
 	unsigned long min_freq, max_freq;
 
@@ -927,7 +927,7 @@ alpha_pll_huayra_recalc_rate(struct clk_hw *hw, unsigned long parent_rate)
 {
 	u64 rate = parent_rate, tmp;
 	struct clk_alpha_pll *pll = to_clk_alpha_pll(hw);
-	u32 l, alpha = 0, ctl, alpha_m, alpha_n;
+	u32 l = 0, alpha = 0, ctl, alpha_m, alpha_n;
 
 	regmap_read(pll->clkr.regmap, PLL_L_VAL(pll), &l);
 	regmap_read(pll->clkr.regmap, PLL_USER_CTL(pll), &ctl);
@@ -980,7 +980,7 @@ static int alpha_pll_huayra_set_rate(struct clk_hw *hw, unsigned long rate,
 				     unsigned long prate)
 {
 	struct clk_alpha_pll *pll = to_clk_alpha_pll(hw);
-	u32 l, a, ctl, cur_alpha = 0;
+	u32 l = 0, a, ctl, cur_alpha = 0;
 
 	rate = alpha_huayra_pll_round_rate(rate, prate, &l, &a);
 
@@ -1023,7 +1023,7 @@ static int alpha_pll_huayra_determine_rate(struct clk_hw *hw,
 				struct clk_rate_request *req)
 {
 	unsigned long rrate, prate;
-	u32 l, a;
+	u32 l = 0, a;
 	struct clk_hw *parent_hw;
 
 	parent_hw = clk_hw_get_parent(hw);
@@ -1319,7 +1319,7 @@ static int clk_zonda_pll_set_rate(struct clk_hw *hw, unsigned long rate,
 	struct clk_alpha_pll *pll = to_clk_alpha_pll(hw);
 	unsigned long rrate;
 	u32 test_ctl_val, alpha_width = pll_alpha_width(pll);
-	u32 l;
+	u32 l = 0;
 	u64 a;
 	int ret;
 
@@ -1382,7 +1382,7 @@ static unsigned long
 clk_zonda_pll_recalc_rate(struct clk_hw *hw, unsigned long parent_rate)
 {
 	struct clk_alpha_pll *pll = to_clk_alpha_pll(hw);
-	u32 l, frac, alpha_width = pll_alpha_width(pll);
+	u32 l = 0, frac, alpha_width = pll_alpha_width(pll);
 
 	regmap_read(pll->clkr.regmap, PLL_L_VAL(pll), &l);
 	regmap_read(pll->clkr.regmap, PLL_ALPHA_VAL(pll), &frac);
@@ -1761,7 +1761,7 @@ static unsigned long alpha_pll_fabia_recalc_rate(struct clk_hw *hw,
 						unsigned long parent_rate)
 {
 	struct clk_alpha_pll *pll = to_clk_alpha_pll(hw);
-	u32 l, frac, alpha_width = pll_alpha_width(pll);
+	u32 l = 0, frac, alpha_width = pll_alpha_width(pll);
 
 	regmap_read(pll->clkr.regmap, PLL_L_VAL(pll), &l);
 	regmap_read(pll->clkr.regmap, PLL_FRAC(pll), &frac);
@@ -1773,7 +1773,7 @@ static int alpha_pll_fabia_set_rate(struct clk_hw *hw, unsigned long rate,
 						unsigned long prate)
 {
 	struct clk_alpha_pll *pll = to_clk_alpha_pll(hw);
-	u32 l, cal_val, alpha_width = pll_alpha_width(pll);
+	u32 l = 0, cal_val, alpha_width = pll_alpha_width(pll);
 	u64 a;
 	unsigned long rrate;
 	int ret = 0;
@@ -1823,7 +1823,7 @@ static int alpha_pll_fabia_prepare(struct clk_hw *hw)
 	const struct pll_vco *vco;
 	struct clk_hw *parent;
 	unsigned long calibration_freq, freq_hz;
-	u32 l, alpha_width = pll_alpha_width(pll), regval;
+	u32 l = 0, alpha_width = pll_alpha_width(pll), regval;
 	u64 a;
 	int ret;
 
@@ -2260,7 +2260,7 @@ static unsigned long
 alpha_pll_lucid_recalc_rate(struct clk_hw *hw, unsigned long parent_rate)
 {
 	struct clk_alpha_pll *pll = to_clk_alpha_pll(hw);
-	u32 l, frac;
+	u32 l = 0, frac;
 
 	regmap_read(pll->clkr.regmap, PLL_L_VAL(pll), &l);
 	regmap_read(pll->clkr.regmap, PLL_ALPHA_VAL(pll), &frac);
@@ -2273,7 +2273,7 @@ static int alpha_pll_lucid_set_rate(struct clk_hw *hw, unsigned long rate,
 {
 	struct clk_alpha_pll *pll = to_clk_alpha_pll(hw);
 	unsigned long rrate;
-	u32 regval, l;
+	u32 regval, l = 0;
 	u64 a;
 	int ret;
 
@@ -2471,7 +2471,7 @@ static unsigned long
 clk_agera_pll_recalc_rate(struct clk_hw *hw, unsigned long parent_rate)
 {
 	struct clk_alpha_pll *pll = to_clk_alpha_pll(hw);
-	u32 l, a, alpha_width = pll_alpha_width(pll);
+	u32 l = 0, a, alpha_width = pll_alpha_width(pll);
 	u64 prate = parent_rate;
 
 	regmap_read(pll->clkr.regmap, PLL_L_VAL(pll), &l);
@@ -2486,7 +2486,7 @@ static int clk_agera_pll_set_rate(struct clk_hw *hw, unsigned long rate,
 	struct clk_alpha_pll *pll = to_clk_alpha_pll(hw);
 	unsigned long rrate;
 	int ret;
-	u32 l, alpha_width = pll_alpha_width(pll);
+	u32 l = 0, alpha_width = pll_alpha_width(pll);
 	u64 a;
 
 	rrate = alpha_pll_round_rate(rate, prate, &l, &a, alpha_width);
@@ -2599,7 +2599,7 @@ static int clk_alpha_pll_slew_set_rate(struct clk_hw *hw, unsigned long rate,
 	struct clk_alpha_pll *pll = to_clk_alpha_pll(hw);
 	unsigned long freq_hz;
 	const struct pll_vco *curr_vco, *vco;
-	u32 l, alpha_width = pll_alpha_width(pll);
+	u32 l = 0, alpha_width = pll_alpha_width(pll);
 	u64 a;
 
 	freq_hz =  alpha_pll_round_rate(rate, parent_rate, &l, &a, alpha_width);
@@ -2654,7 +2654,7 @@ static int clk_alpha_pll_calibrate(struct clk_hw *hw)
 	struct clk_hw *parent;
 	const struct pll_vco *vco;
 	u64 a;
-	u32 l, alpha_width = pll_alpha_width(pll);
+	u32 l = 0, alpha_width = pll_alpha_width(pll);
 	int rc;
 
 	parent = clk_hw_get_parent(hw);

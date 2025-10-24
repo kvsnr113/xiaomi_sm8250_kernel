@@ -173,12 +173,12 @@ uint8_t FlashBlockErase(struct cam_ois_ctrl_t *o_ctrl, uint8_t SelMat , uint32_t
 	// fail safe
 	// reject irregular mat
 	if (SelMat != USER_MAT && SelMat != INF_MAT0 && SelMat != INF_MAT1 && SelMat != INF_MAT2)
-		return 10;	// INF_MAT2‚àAccess‚µ‚È‚¢
+		return 10;	// INF_MAT2ï¿½ï¿½Accessï¿½ï¿½ï¿½È‚ï¿½
 	// reject command if address inner NVR3
 	if(SetAddress > 0x000003FF)
 		return 9;
 
-	// Flash write€”õ
+	// Flash writeï¿½ï¿½ï¿½ï¿½
 	ans = UnlockCodeSet(o_ctrl);
 	if (ans != 0)
 		return ans;	// Unlock Code Set
@@ -228,7 +228,7 @@ uint8_t FlashSingleRead(struct cam_ois_ctrl_t *o_ctrl, uint8_t SelMat, uint32_t 
 	// fail safe
 	// reject irregular mat
 	if( SelMat != USER_MAT && SelMat != INF_MAT0 && SelMat != INF_MAT1 && SelMat != INF_MAT2  )
-		return 10;	// INF_MAT2‚àAccess‚µ‚È‚¢
+		return 10;	// INF_MAT2ï¿½ï¿½Accessï¿½ï¿½ï¿½È‚ï¿½
 	// reject command if address inner NVR3
 	if( UlAddress > 0x000003FF )											return 9;
 
@@ -258,7 +258,7 @@ uint8_t FlashMultiRead(struct cam_ois_ctrl_t *o_ctrl, uint8_t SelMat, uint32_t U
 	// fail safe
 	// reject irregular mat
 	if( SelMat != USER_MAT && SelMat != INF_MAT0 && SelMat != INF_MAT1 && SelMat != INF_MAT2  )
-		return 10;	// INF_MAT2‚ÍRead only Access‚µ‚È‚¢
+		return 10;	// INF_MAT2ï¿½ï¿½Read only Accessï¿½ï¿½ï¿½È‚ï¿½
 	// reject command if address inner NVR3
 	if( UlAddress > 0x000003FF )
 		return 9;
@@ -295,7 +295,7 @@ uint8_t FlashBlockWrite(struct cam_ois_ctrl_t *o_ctrl, uint8_t SelMat, uint32_t 
 	// fail safe
 	// reject irregular mat
 //	if( SelMat != INF_MAT0 && SelMat != INF_MAT1  )
-//		return 10;	// USR MAT,INF_MAT2‚àAccess‚µ‚È‚¢
+//		return 10;	// USR MAT,INF_MAT2ï¿½ï¿½Accessï¿½ï¿½ï¿½È‚ï¿½
 	if (SelMat != INF_MAT0 && SelMat != INF_MAT1 && SelMat != INF_MAT2)
 		return 10;	// USR MAT
 
@@ -435,8 +435,8 @@ uint8_t EraseUserMat128(struct cam_ois_ctrl_t *o_ctrl, uint8_t StartBlock, uint8
 
 	//***** User Mat *****
 	for(i = StartBlock; i<EndBlock ; i++) {
-		RamWrite32A(o_ctrl, 0xF00A, ( i << 10 ), 0);	// FromCmd.Addr‚Ìİ’è
-		RamWrite32A(o_ctrl, 0xF00C, 0x00000020, 0);	// FromCmd.Control‚Ìİ’è(ƒuƒƒbƒNÁ‹)
+		RamWrite32A(o_ctrl, 0xF00A, ( i << 10 ), 0);	// FromCmd.Addrï¿½Ìİ’ï¿½
+		RamWrite32A(o_ctrl, 0xF00C, 0x00000020, 0);	// FromCmd.Controlï¿½Ìİ’ï¿½(ï¿½uï¿½ï¿½ï¿½bï¿½Nï¿½ï¿½ï¿½ï¿½)
 
 		msleep(5);
 		UlCnt = 0;
@@ -634,7 +634,7 @@ uint8_t Mat2ReWrite(struct cam_ois_ctrl_t *o_ctrl)
 
 	/* backup sum check before re-write *****/
 	UlCkVal_Bk = 0;
-	for( i=0; i < 32; i++ ){		// ‘S—Ìˆæ
+	for( i=0; i < 32; i++ ){		// ï¿½Sï¿½Ìˆï¿½
 		UlCkVal_Bk +=  UlMAT2[i];
 	}
 
@@ -738,7 +738,7 @@ uint8_t PmemUpdate128(struct cam_ois_ctrl_t *o_ctrl, uint8_t fw_type)
 // 2. Verify
 //--------------------------------------------------------------------------------
 
-	// Program RAM‚ÌCheckSum‚Ì‹N“®
+	// Program RAMï¿½ï¿½CheckSumï¿½Ì‹Nï¿½ï¿½
 	data[0] = 0xF0;	//CmdID
 	data[1] = 0x0E;	//CmdID
 	data[2] = (unsigned char)((UpDataCodeSize_07_00 >> 8) & 0x000000FF);
@@ -763,7 +763,7 @@ uint8_t PmemUpdate128(struct cam_ois_ctrl_t *o_ctrl, uint8_t fw_type)
 	CntRd(o_ctrl, 0xF00E, ReadData, 8);
 
 	IOWrite32A(o_ctrl, FLASHROM_FLAMODE , 0x00000002, 0);
-	// CheckSuml » (A Header define)
+	// CheckSuml ï¿½ (A Header define)
 	for(i = 0;i < 8; i++) {
 		CAM_DBG(CAM_OIS, "ReadData[%d] = 0x%x, fw_data[%d] = 0x%x",
 			7-i, ReadData[7-i], i, *p);
@@ -791,7 +791,7 @@ uint8_t ProgramFlash128_LongBurst(struct cam_ois_ctrl_t *o_ctrl)
 	int32_t rc = 0;
 	uint16_t total_bytes = 0;
 
-	uint32_t UlReadVal, UlCnt, UlNum;
+	uint32_t UlReadVal = 0, UlCnt = 0, UlNum = 0;
 	uint32_t i, j;
 	uint16_t Remainder;
 	uint8_t data[(BURST_LENGTH_FC + 2)];
@@ -816,8 +816,8 @@ uint8_t ProgramFlash128_LongBurst(struct cam_ois_ctrl_t *o_ctrl)
 		RamWrite32A(o_ctrl, 0x0680, 0x000800be, 0);	// F009 Update
 
 		RamWrite32A(o_ctrl, 0xF007, 0x00000000, 0);	// FlashAccess Setup
-	//	RamWrite32A(o_ctrl, 0xF00A, 0x00000000, 0);	// FromCmd.Addr‚Ìİ’è
-		RamWrite32A(o_ctrl, 0xF00A, 0x00000030, 0);	// FromCmd.Addr‚Ìİ’è
+	//	RamWrite32A(o_ctrl, 0xF00A, 0x00000000, 0);	// FromCmd.Addrï¿½Ìİ’ï¿½
+		RamWrite32A(o_ctrl, 0xF00A, 0x00000030, 0);	// FromCmd.Addrï¿½Ìİ’ï¿½
 
 		data[0] = 0xF0;		// CmdH
 		data[1] = 0x08;		// CmdL
@@ -825,7 +825,7 @@ uint8_t ProgramFlash128_LongBurst(struct cam_ois_ctrl_t *o_ctrl)
 		for(i = 1;i < (total_bytes / BURST_LENGTH_FC) ; i++)
 		{
 			if( ++UcOddEvn >1 )
-			  	UcOddEvn = 0;	// Šï”‹ô”Check
+			  	UcOddEvn = 0;	// ï¿½ï”ï¿½ï¿½ï¿½ï¿½Check
 			if (UcOddEvn == 0)
 				data[1] = 0x08;
 			else
@@ -957,12 +957,12 @@ uint8_t ProgramFlash128_Standard(struct cam_ois_ctrl_t *o_ctrl)
 	int32_t rc = 0;
 	uint16_t total_bytes = 0;
 
-	uint32_t UlReadVal, UlCnt, UlNum;
+	uint32_t UlReadVal = 0, UlCnt = 0, UlNum = 0;
 	uint8_t	data[(BURST_LENGTH_FC + 3)];
 	uint32_t i, j;
 	const uint8_t *NcFromVal = NULL;//ptr->FromCode + 64;
 	const uint8_t *NcFromVal1st = NULL;//ptr->FromCode;
-	uint8_t UcOddEvn;
+	uint8_t UcOddEvn = 0;
 
 	snprintf(fw_name, 32, "%s.mem", o_ctrl->ois_name);
 
@@ -979,15 +979,15 @@ uint8_t ProgramFlash128_Standard(struct cam_ois_ctrl_t *o_ctrl)
 
 		IOWrite32A(o_ctrl, 0xE0701C , 0x00000000, 0);
 		RamWrite32A(o_ctrl, 0xF007, 0x00000000, 0);	// FlashAccess Setup
-		RamWrite32A(o_ctrl, 0xF00A, 0x00000010, 0);	// FromCmd.Addr‚Ìİ’è
+		RamWrite32A(o_ctrl, 0xF00A, 0x00000010, 0);	// FromCmd.Addrï¿½Ìİ’ï¿½
 		data[0] = 0xF0;	// CmdH
 		data[1] = 0x08;	// CmdL
-		data[2] = 0x00;	// FromCmd.BufferA‚ÌƒAƒhƒŒƒX
+		data[2] = 0x00;	// FromCmd.BufferAï¿½ÌƒAï¿½hï¿½ï¿½ï¿½X
 
 		for (i = 1; i< (total_bytes / 64); i++)
 		{
 			if ( ++UcOddEvn >1 )
-			  	UcOddEvn = 0;	// Šï”‹ô”Check
+			  	UcOddEvn = 0;	// ï¿½ï”ï¿½ï¿½ï¿½ï¿½Check
 			if (UcOddEvn == 0)
 				data[1] = 0x08;
 			else
@@ -1055,7 +1055,7 @@ uint8_t ProgramFlash128_Standard(struct cam_ois_ctrl_t *o_ctrl)
 			CAM_DBG(CAM_OIS, "[%d]UcOddEvn= %d, data[1]= %d", 0, data[1], NcFromVal1st );
 
 #if (BURST_LENGTH_FC == 32)
-			// 32Byte‚È‚ç‚ÎA2‰ñ‚É•ª‚¯‚Ä‘—‚ç‚È‚¢‚Æ‚¢‚¯‚È‚¢B
+			// 32Byteï¿½È‚ï¿½ÎA2ï¿½ï¿½É•ï¿½ï¿½ï¿½ï¿½Ä‘ï¿½ï¿½ï¿½È‚ï¿½ï¿½Æ‚ï¿½ï¿½ï¿½ï¿½È‚ï¿½ï¿½B
 			data[2] = 0x00;
 			UlNum = 3;
 			for(j=0 ; j < BURST_LENGTH_FC; j++){
@@ -1158,13 +1158,13 @@ uint8_t MatVerify(struct cam_ois_ctrl_t *o_ctrl, uint32_t FwChecksum, uint32_t F
 uint8_t WrGyroGainData( struct cam_ois_ctrl_t *o_ctrl, uint8_t UcMode )
 {
 	uint32_t	UlMAT0[32];
-	uint32_t	UlReadGxzoom , UlReadGyzoom;
+	uint32_t	UlReadGxzoom = 0, UlReadGyzoom = 0;
 	uint8_t ans = 0, i;
 	uint16_t	UsCkVal,UsCkVal_Bk ;
 
         CAM_DBG(CAM_OIS, "[WrGyroGainData]BEGIN WrGyroGainData");
 	/* Back up ******************************************************/
-	ans =FlashMultiRead( o_ctrl,INF_MAT0, 0, UlMAT0, 32 );	// check sum ¿¿
+	ans =FlashMultiRead( o_ctrl,INF_MAT0, 0, UlMAT0, 32 );	// check sum ï¿½ï¿½
 	if( ans )	return( 1 );
 
 	/* Erase   ******************************************************/
@@ -1210,7 +1210,7 @@ uint8_t WrGyroGainData( struct cam_ois_ctrl_t *o_ctrl, uint8_t UcMode )
 	if( ans != 0 )	return( 3 ) ;							// Unlock Code Set
 	/* Verify ******************************************************/
 	UsCkVal_Bk = UsCkVal;
-	ans =FlashMultiRead( o_ctrl,INF_MAT0, 0, UlMAT0, 32 );	// check sum ¿¿
+	ans =FlashMultiRead( o_ctrl,INF_MAT0, 0, UlMAT0, 32 );	// check sum ï¿½ï¿½
 	if( ans )	return( 4 );
 
 	UsCkVal = 0;
