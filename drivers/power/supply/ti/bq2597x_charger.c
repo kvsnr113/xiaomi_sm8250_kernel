@@ -1058,7 +1058,7 @@ static int bq2597x_get_adc_data(struct bq2597x *bq, int channel, int *result)
 {
 	int ret;
 	u16 val;
-	u8 val_l, val_h;
+	u8 val_l, val_h = 0;
 	s16 t;
 
 	if (channel < 0 || channel >= ADC_MAX_NUM)
@@ -1782,7 +1782,7 @@ static int bq2597x_init_regulation(struct bq2597x *bq)
 static int bq2597x_init_device(struct bq2597x *bq)
 {
 	int ret;
-	u8 val;
+	u8 val = 0;
 
 	if (bq->chip_vendor == NU2105) {
 		//Set AC_OVP [0:2] = 0

@@ -553,7 +553,7 @@ int DS28E16_cmd_readMemory(int pg, unsigned char *data)
 int DS28E16_cmd_writeMemory(int pg, unsigned char *data)
 {
 	unsigned char write_buf[255];
-	unsigned char read_buf[255];
+	unsigned char read_buf[255] = { 0 };
 	int write_len = 0;
 	int read_len = 1;
 	int len_byte = 18;
@@ -671,7 +671,7 @@ int DS28E16_cmd_decrementCounter(void)
 int DS28E16_cmd_setPageProtection(int page, unsigned char prot)
 {
 	unsigned char write_buf[255];
-	unsigned char read_buf[255];
+	unsigned char read_buf[255] = { 0 };
 	int write_len = 0;
 	int read_len = 1;
 	int len_byte = 3;
@@ -711,7 +711,7 @@ int DS28E16_cmd_setPageProtection(int page, unsigned char prot)
 int DS28E16_cmd_device_disable(int op, unsigned char *password)
 {
 	unsigned char write_buf[64];
-	unsigned char read_buf[64];
+	unsigned char read_buf[64] = { 0 };
 	int write_len = 0;
 	int read_len = 1;
 	int length_byte = 10;

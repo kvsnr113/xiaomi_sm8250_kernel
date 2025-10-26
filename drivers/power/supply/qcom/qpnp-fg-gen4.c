@@ -1122,7 +1122,7 @@ static int fg_gen4_get_prop_soc_decimal_rate(struct fg_gen4_chip *chip, int *val
 static int fg_gen4_get_prop_soc_decimal(struct fg_gen4_chip *chip, int *val)
 {
 	int rc;
-	int soc_decimal, soc_decimal_rate;
+	int soc_decimal, soc_decimal_rate = 0;
 
 	union power_supply_propval pval = {0,};
 
@@ -1638,7 +1638,7 @@ static int fg_gen4_adjust_ki_coeff_full_soc(struct fg_gen4_chip *chip,
 						int batt_temp)
 {
 	struct fg_dev *fg = &chip->fg;
-	int rc, ki_coeff_full_soc_norm = 0, ki_coeff_full_soc_low;
+	int rc, ki_coeff_full_soc_norm = 0, ki_coeff_full_soc_low = 0;
 	u8 val;
 
 	if ((batt_temp < 0) ||
@@ -7366,7 +7366,7 @@ static int fg_gen4_probe(struct platform_device *pdev)
 	struct fg_gen4_chip *chip;
 	struct fg_dev *fg;
 	struct power_supply_config fg_psy_cfg = {};
-	int rc, msoc, volt_uv, batt_temp;
+	int rc, msoc, volt_uv, batt_temp = 0;
 
 	chip = devm_kzalloc(&pdev->dev, sizeof(*chip), GFP_KERNEL);
 	if (!chip)

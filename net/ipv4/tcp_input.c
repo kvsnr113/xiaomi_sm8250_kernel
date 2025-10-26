@@ -3064,7 +3064,8 @@ static int tcp_clean_rtx_queue(struct sock *sk, u32 prior_fack,
 			       struct tcp_sacktag_state *sack)
 {
 	const struct inet_connection_sock *icsk = inet_csk(sk);
-	u64 first_ackt, last_ackt;
+	u64 first_ackt = 0;
+	u64 last_ackt = 0;
 	struct tcp_sock *tp = tcp_sk(sk);
 	u32 prior_sacked = tp->sacked_out;
 	u32 reord = tp->snd_nxt; /* lowest acked un-retx un-sacked seq */

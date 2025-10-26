@@ -1381,7 +1381,7 @@ static int usbpd_pm_sm(struct usbpd_pm *pdpm)
 	static bool stop_sw;
 	static bool recover;
 	int effective_fcc_val = 0;
-	int thermal_level = 0, capacity;
+	int thermal_level = 0, capacity = 0;
 	static int curr_fcc_lmt, curr_ibus_lmt;
 
 	switch (pdpm->state) {
