@@ -1925,7 +1925,7 @@ static int diag_cmd_set_log_mask(unsigned char *src_buf, int src_len,
 	uint32_t mask_size = 0;
 	struct diag_log_config_req_t *req;
 	struct diag_log_config_set_rsp_t rsp;
-	struct diag_log_config_rsp_sub_t *req_sub;
+	struct diag_log_config_rsp_sub_t *req_sub = NULL;
 	struct diag_log_config_rsp_sub_t rsp_sub;
 	struct diag_log_mask_t *mask = NULL;
 	struct diag_logging_range_t range;
@@ -2147,7 +2147,7 @@ static int diag_cmd_disable_log_mask(unsigned char *src_buf, int src_len,
 	struct diag_log_mask_t *mask = NULL;
 	struct diag_log_config_rsp_t header;
 	struct diag_log_config_rsp_sub_t rsp;
-	struct diag_log_config_rsp_sub_t *req;
+	struct diag_log_config_rsp_sub_t *req = NULL;
 	int write_len = 0, i, peripheral;
 	int preset = 0, sub_index = INVALID_INDEX, ret_val = 0;
 	struct diag_md_session_t *info = NULL;
