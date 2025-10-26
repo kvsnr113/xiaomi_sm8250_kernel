@@ -1165,7 +1165,7 @@ static void sde_kms_complete_commit(struct msm_kms *kms,
 		return;
 	priv = sde_kms->dev->dev_private;
 
-	if (sde_kms_power_resource_is_enabled(sde_kms->dev) == false) {
+	if (!sde_kms_power_resource_is_enabled(sde_kms->dev)) {
 		SDE_ERROR("power resource is not enabled\n");
 		return;
 	}

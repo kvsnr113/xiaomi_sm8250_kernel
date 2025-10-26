@@ -4216,10 +4216,10 @@ static int aw8697_parse_dt_common(struct device *dev, struct aw8697 *aw8697,
 		if (rc < 0)
 			pr_debug("%s Read qcom,wf-pattern property failed !\n",
 			       __func__);
-
-		pr_debug("%s %d  effect->pattern_length=%d  effect->pattern=%d\n",
-			 __func__, __LINE__,
-			 effect->pattern_length, (long)effect->pattern);
+		
+		printk("%s %d  effect->pattern_length=%d  effect->pattern=%d \n",
+		       __func__, __LINE__, effect->pattern_length,
+		       (uintptr_t)effect->pattern);
 
 		effect->play_rate_us = config->play_rate_us;
 		rc = of_property_read_u32(child_node, "qcom,wf-play-rate-us",
