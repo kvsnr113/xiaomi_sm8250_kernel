@@ -1156,7 +1156,7 @@ int cam_mem_mgr_request_mem(struct cam_mem_mgr_request_desc *inp,
 	int rc = 0;
 	uint32_t heap_id;
 	int32_t ion_flag = 0;
-	uintptr_t kvaddr;
+	uintptr_t kvaddr = 0;
 	dma_addr_t iova = 0;
 	size_t request_len = 0;
 	uint32_t mem_handle;

@@ -1781,7 +1781,7 @@ static int sde_mixer_parse_dt(struct device_node *np,
 {
 	int rc, prop_count[MIXER_PROP_MAX], i, j;
 	int blocks_prop_count[MIXER_BLOCKS_PROP_MAX];
-	int blend_prop_count[MIXER_BLEND_PROP_MAX];
+	int blend_prop_count[MIXER_BLEND_PROP_MAX] = { 0 };
 	bool prop_exists[MIXER_PROP_MAX];
 	bool blocks_prop_exists[MIXER_BLOCKS_PROP_MAX];
 	bool blend_prop_exists[MIXER_BLEND_PROP_MAX];

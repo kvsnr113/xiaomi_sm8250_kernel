@@ -5153,7 +5153,7 @@ end:
 static uint32_t get_current_brightness(struct sde_crtc_state *cstate)
 {
 	int i;
-	uint32_t brightness;
+	uint32_t brightness = 0;
 	for (i = 0; i < cstate->num_connectors; i++) {
 		sde_connector_mi_get_current_backlight(cstate->connectors[i], &brightness);
 	}

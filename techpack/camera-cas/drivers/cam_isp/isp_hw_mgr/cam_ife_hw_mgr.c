@@ -3865,8 +3865,8 @@ static int cam_ife_mgr_start_hw(void *hw_mgr_priv, void *start_hw_args)
 	bool                              res_rdi_context_set = false;
 	uint32_t                          primary_rdi_src_res;
 	uint32_t                          primary_rdi_out_res;
-	uint32_t                          last_rdi_src_res, last_rdi_res;
-	uint32_t                          last_rdi_out_res;
+	uint32_t                          last_rdi_src_res = 0, last_rdi_res = 0;
+	uint32_t                          last_rdi_out_res = 0;
 
 	primary_rdi_src_res = CAM_ISP_HW_VFE_IN_MAX;
 	primary_rdi_out_res = CAM_ISP_IFE_OUT_RES_MAX;
