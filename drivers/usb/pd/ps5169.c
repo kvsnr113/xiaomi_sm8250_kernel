@@ -106,7 +106,7 @@ static int ps5169_get_chipid_revision(struct ps5169_info *info)
 	pr_info("%s: Chip_ID: 0x%02x, 0x%02x", __func__, chip_id_h, chip_id_l);
 
 	ret |= ps5169_read_reg(info, REG_REVISION_L, &revision_l);
-	ret |= ps5169_read_reg(info, REG_REVISION_L, &revision_l);
+	ret |= ps5169_read_reg(info, REG_REVISION_H, &revision_h);
 	pr_info("%s: Revision: 0x%02x, 0x%02x", __func__, revision_h, revision_l);
 
 	if ((chip_id_h == 0x69) && (chip_id_l == 0x87))  {

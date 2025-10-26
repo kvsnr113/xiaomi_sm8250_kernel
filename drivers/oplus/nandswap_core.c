@@ -360,7 +360,7 @@ out:
 
 static void ns_life_ctrl_update(bool timer)
 {
-	unsigned long events[NR_VM_EVENT_ITEMS];
+	unsigned long events[NR_VM_EVENT_ITEMS] = { 0 };
 	long write_inc;
 	struct tm tm;
 	struct timespec64 ts;
@@ -409,7 +409,7 @@ static void ns_life_ctrl_timer(struct timer_list *t)
 
 static inline void ns_life_ctrl_init(void)
 {
-	unsigned long events[NR_VM_EVENT_ITEMS];
+	unsigned long events[NR_VM_EVENT_ITEMS] = { 0 };
 	struct timespec64 ts;
 
 	memset(&nsi, 0, sizeof(nsi));
@@ -1416,7 +1416,7 @@ static struct proc_ops life_protect_fops = {
 
 static int stat_info_seq_show(struct seq_file *seq, void *offset)
 {
-	unsigned long events[NR_VM_EVENT_ITEMS];
+	unsigned long events[NR_VM_EVENT_ITEMS] = { 0 };
 	all_vm_events(events);
 
 	seq_printf(seq, "ns_fn_enable: %d\n"
