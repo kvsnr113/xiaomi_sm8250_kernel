@@ -11,7 +11,7 @@ struct e404_attributes e404_data = {
     .batt_profile = 1,
     .kgsl_skip_zeroing = 0,
     .pid_shrink = 0,
-    .file_sync = 0,
+    .file_sync = 1,
     .panel_width = 70,
     .panel_height = 155,
     .oem_panel_width = 700,
@@ -203,4 +203,4 @@ module_exit(e404_exit);
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("kvsnr113");
 MODULE_DESCRIPTION("E404 manager via early_param and sysfs");
-MODULE_VERSION("1.5");
+MODULE_VERSION("1.4");
