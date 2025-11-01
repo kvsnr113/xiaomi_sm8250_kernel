@@ -36,6 +36,10 @@ case "$*" in
         export PATH="$BASE_DIR/toolchains/aosp-clang/bin:$PATH"
         TC="AOSP-Clang"
         ;;
+    *neutron*)
+        export PATH="$BASE_DIR/toolchains/neutron-clang/bin:$PATH"
+        TC="Neutron-Clang"
+        ;;
     *eva*)
         GCC64_DIR="$BASE_DIR/toolchains/gcc/gcc-arm64/bin/"
         GCC32_DIR="$BASE_DIR/toolchains/gcc/gcc-arm/bin/"
@@ -49,8 +53,16 @@ case "$*" in
         TC="GCC"
         ;;
     *)
-        export PATH="$BASE_DIR/toolchains/neutron-clang/bin:$PATH"
-        TC="Neutron-Clang"
+        if [[ -d "$BASE_DIR/toolchains/aosp-clang" ]]; then
+            export PATH="$BASE_DIR/toolchains/aosp-clang/bin:$PATH"
+            TC="AOSP-Clang"
+        elif [[ -d "$BASE_DIR/toolchains/neutron-clang" ]]; then
+            export PATH="$BASE_DIR/toolchains/neutron-clang/bin:$PATH"
+            TC="Neutron-Clang"
+        else
+            echo "-- !! Please provide a toolchain !! --"
+            exit 1
+        fi
         ;;
 esac
 
