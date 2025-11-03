@@ -1657,8 +1657,8 @@ static struct ctl_table kern_table[] = {
 		.maxlen		= sizeof(u8),
 		.mode		= 0644,
 		.proc_handler = sched_bore_update_handler,
-		.extra1		= &zero,
-		.extra2		= &one,
+		.extra1		= SYSCTL_ZERO,
+		.extra2		= SYSCTL_ONE,
 	},
 	{
 		.procname	= "sched_burst_inherit_type",
@@ -1666,7 +1666,7 @@ static struct ctl_table kern_table[] = {
 		.maxlen		= sizeof(u8),
 		.mode		= 0644,
 		.proc_handler = sched_burst_inherit_type_update_handler,
-		.extra1		= &zero,
+		.extra1		= SYSCTL_ZERO,
 		.extra2		= &two,
 	},
 	{
@@ -1675,7 +1675,7 @@ static struct ctl_table kern_table[] = {
 		.maxlen		= sizeof(u8),
 		.mode		= 0644,
 		.proc_handler = proc_dou8vec_minmax,
-		.extra1		= &zero,
+		.extra1		= SYSCTL_ZERO,
 		.extra2		= &three,
 	},
 	{
@@ -1684,7 +1684,7 @@ static struct ctl_table kern_table[] = {
 		.maxlen		= sizeof(u8),
 		.mode		= 0644,
 		.proc_handler = proc_dou8vec_minmax,
-		.extra1		= &zero,
+		.extra1		= SYSCTL_ZERO,
 		.extra2		= &maxval_6_bits,
 	},
 	{
@@ -1693,7 +1693,7 @@ static struct ctl_table kern_table[] = {
 		.maxlen		= sizeof(uint),
 		.mode		= 0644,
 		.proc_handler = proc_douintvec_minmax,
-		.extra1		= &zero,
+		.extra1		= SYSCTL_ZERO,
 		.extra2		= &maxval_12_bits,
 	},
 	{
