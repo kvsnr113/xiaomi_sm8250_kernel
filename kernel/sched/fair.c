@@ -206,7 +206,7 @@ static inline void update_load_set(struct load_weight *lw, unsigned long w)
 #ifdef CONFIG_SCHED_BORE
 static void update_sysctl(void) {
 	sysctl_sched_base_slice = nsecs_per_tick *
-		max(1UL, DIV_ROUND_UP(sysctl_sched_min_base_slice, nsecs_per_tick));
+		max(1U, DIV_ROUND_UP(sysctl_sched_min_base_slice, nsecs_per_tick));
 }
 void sched_update_min_base_slice(void) { update_sysctl(); }
 #else // !CONFIG_SCHED_BORE
@@ -894,7 +894,7 @@ static inline void set_protect_slice(struct cfs_rq *cfs_rq, struct sched_entity 
 #else // CONFIG_SCHED_BORE
 	u64 slice = normalized_sysctl_sched_base_slice;
 	bool run_to_parity = sched_feat(RUN_TO_PARITY);
-#endif CONFIG_SCHED_BORE
+#endif
 	u64 vprot = se->deadline;
 
 	if (run_to_parity)
@@ -6539,13 +6539,15 @@ static int dequeue_entities(struct rq *rq, struct sched_entity *se, int flags)
  */
 static bool dequeue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 {
+#ifdef CONFIG_SCHED_BORE
+	struct cfs_rq *cfs_rq = &rq->cfs;
+	struct sched_entity *se = &p->se;
+#endif
 	if (!p->se.sched_delayed)
 		util_est_dequeue(&rq->cfs, p);
 
 	util_est_update(&rq->cfs, p, flags & DEQUEUE_SLEEP);
 #ifdef CONFIG_SCHED_BORE
-	struct cfs_rq *cfs_rq = &rq->cfs;
-	struct sched_entity *se = &p->se;
 	if ((flags & DEQUEUE_SLEEP) && entity_is_task(se)) {
 		if (cfs_rq->curr == se)
 			update_curr(cfs_rq_of(&p->se));
@@ -8761,6 +8763,10 @@ static void check_preempt_wakeup(struct rq *rq, struct task_struct *p, int wake_
 	struct sched_entity *se = &curr->se, *pse = &p->se;
 	struct cfs_rq *cfs_rq = task_cfs_rq(curr);
 	bool do_preempt_short = false;
+#ifdef CONFIG_SCHED_BORE
+	bool run_to_parity = likely(sched_bore) ?
+		sched_feat(RUN_TO_PARITY_BORE) : sched_feat(RUN_TO_PARITY);
+#endif
 
 	if (unlikely(se == pse))
 		return;
@@ -8822,12 +8828,10 @@ static void check_preempt_wakeup(struct rq *rq, struct task_struct *p, int wake_
 		goto preempt;
 
 #ifdef CONFIG_SCHED_BORE
-	bool run_to_parity = likely(sched_bore) ?
-		sched_feat(RUN_TO_PARITY_BORE) : sched_feat(RUN_TO_PARITY);
 	if (run_to_parity && do_preempt_short)
 #else // CONFIG_SCHED_BORE
 	if (sched_feat(RUN_TO_PARITY) && do_preempt_short)
-#endif CONFIG_SCHED_BORE
+#endif
 		update_protect_slice(cfs_rq, se);
 
 	return;
