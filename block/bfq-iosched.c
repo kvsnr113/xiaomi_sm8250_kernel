@@ -177,14 +177,21 @@ static const int bfq_back_max = 16 * 1024;
 /* Penalty of a backwards seek, in number of sectors. */
 static const int bfq_back_penalty = 2;
 
-/* Idling period duration, in ns. */
-static u64 bfq_slice_idle = NSEC_PER_SEC / 125;
+/* Idling period duration, in ns. Set to 0 to match tuned CFQ behaviour
+ * (avoid extra idling when aiming for lower latency on modern devices).
+ */
+static u64 bfq_slice_idle = 0;
 
-/* Minimum number of assigned budgets for which stats are safe to compute. */
-static const int bfq_stats_min_budgets = 194;
+/* Minimum number of assigned budgets for which stats are safe to compute.
+ * Lowered to collect useful statistics earlier for adaptive heuristics.
+ */
+static const int bfq_stats_min_budgets = 100;
 
-/* Default maximum budget values, in sectors and number of requests. */
-static const int bfq_default_max_budget = 16 * 1024;
+/* Default maximum budget values, in sectors and number of requests.
+ * Reduced from 16Ki sectors to 8Ki to shorten service spans and
+ * improve latency for mixed workloads (aligned with smaller CFQ slices).
+ */
+static const int bfq_default_max_budget = 8 * 1024;
 
 /*
  * When a sync request is dispatched, the queue that contains that
@@ -205,10 +212,16 @@ static const int bfq_default_max_budget = 16 * 1024;
  * - when the group does writes, w.r.t. to when it does reads;
  * - when other groups do reads, w.r.t. to when they do writes.
  */
-static const int bfq_async_charge_factor = 3;
+/* Charge factor for async requests. Increased slightly to throttle async
+ * IO relative to sync IO (CFQ had smaller async slices); this helps
+ * protect reads on write-heavy workloads.
+ */
+static const int bfq_async_charge_factor = 4;
 
-/* Default timeout values, in jiffies, approximating CFQ defaults. */
-const int bfq_timeout = HZ / 8;
+/* Default timeout values, in jiffies. Slightly reduced to react faster to
+ * changing workloads (smaller timeout => quicker re-tuning of queues).
+ */
+const int bfq_timeout = HZ / 10;
 
 /*
  * Time limit for merging (see comments in bfq_setup_cooperator). Set
@@ -222,7 +235,10 @@ const int bfq_timeout = HZ / 8;
  * first requests from each cooperator.  After that, there is very
  * little chance to find cooperators.
  */
-static const unsigned long bfq_merge_time_limit = HZ/10;
+/* Time limit for merging. Reduced to limit cooperator merging window so we
+ * avoid long merges that can increase latency under interactive workloads.
+ */
+static const unsigned long bfq_merge_time_limit = HZ/20;
 
 static struct kmem_cache *bfq_pool;
 
