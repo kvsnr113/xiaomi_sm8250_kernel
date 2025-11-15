@@ -15,7 +15,6 @@ struct e404_attributes {
     int dtbo_type;
     int batt_profile;
     int kgsl_skip_zeroing;
-    int pid_shrink;
     int file_sync;
     int panel_width;
     int panel_height;
