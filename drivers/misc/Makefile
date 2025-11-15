@@ -83,4 +83,3 @@ obj-$(CONFIG_MOTOR_DRV8846)	+= drv8846.o
 obj-$(CONFIG_GPIO_TESTING_MODE)	+= gpio-testing-mode.o
 obj-$(CONFIG_PERF_HELPER)	+= perf_helper.o
 obj-$(CONFIG_E404_SIGNATURE)	+=	e404_attributes.o
-obj-y				+= lyb_taskmmu.o
