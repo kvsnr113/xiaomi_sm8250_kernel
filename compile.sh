@@ -263,15 +263,9 @@ makebuild() {
     sed -i '/CONFIG_KALLSYMS=/c\CONFIG_KALLSYMS=n' out/.config
     sed -i '/CONFIG_KALLSYMS_BASE_RELATIVE=/c\CONFIG_KALLSYMS_BASE_RELATIVE=n' out/.config
             
-    if [[ "$1" == "SUSFS" ]]; then
-        echo "-- Compiling with SUSFS --"
-        sed -i '/CONFIG_KSU_SUSFS=/c\CONFIG_KSU_SUSFS=y' out/.config
-        export CCACHE_DIR="$BASE_DIR/ccache/.ccache_susfs$TC"
-    else
-        echo "-- Compiling without SUSFS --"
-        sed -i '/CONFIG_KSU_SUSFS=/c\CONFIG_KSU_SUSFS=n' out/.config
-        export CCACHE_DIR="$BASE_DIR/ccache/.ccache_nosusfs$TC"
-    fi
+    echo "-- Compiling Kernel --"
+    export CCACHE_DIR="$BASE_DIR/ccache/.ccache_$TC"
+
     compilebuild
     # Show ccache stats after build
     echo "======== CCache Stats =========="
@@ -280,10 +274,10 @@ makebuild() {
     echo "================================"
 
     echo "-- Copying files to AnyKernel3 --"
-    rm -f "$AK3_DIR/${TARGET}-$1-Image"
+    rm -f "$AK3_DIR/${TARGET}-Image"
     rm -f "$AK3_DIR/${TARGET}-dtbo.img"
     rm -f "$AK3_DIR/${TARGET}-dtb"
-    cp "$K_IMG" "$AK3_DIR/${TARGET}-$1-Image"
+    cp "$K_IMG" "$AK3_DIR/${TARGET}-Image"
     cp "$K_DTBO" "$AK3_DIR/${TARGET}-dtbo.img"
     cp "$K_DTB" "$AK3_DIR/${TARGET}-dtb"
 }
@@ -316,9 +310,7 @@ while true; do
             rm -f "$BASE_DIR/compile.log"
             build_msg
             clearbuild
-            makebuild "SUSFS" 2>&1 | tee -a "$BASE_DIR/compile.log"
-            clearbuild
-            makebuild "NOSUSFS" 2>&1 | tee -a "$BASE_DIR/compile.log"
+            makebuild 2>&1 | tee -a "$BASE_DIR/compile.log"
             zipbuild
             uploadbuild
             TIME_END=$(("$(date +"%s")" - "$TIME_START"))
