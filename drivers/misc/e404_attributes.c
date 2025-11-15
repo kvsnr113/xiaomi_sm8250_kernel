@@ -10,7 +10,6 @@ struct e404_attributes e404_data = {
     .dtbo_type = 1,
     .batt_profile = 1,
     .kgsl_skip_zeroing = 0,
-    .pid_shrink = 0,
     .file_sync = 1,
     .panel_width = 70,
     .panel_height = 155,
@@ -150,7 +149,6 @@ E404_ATTR_RO(oem_panel_width);
 E404_ATTR_RO(oem_panel_height);
 
 E404_ATTR_RW(kgsl_skip_zeroing);
-E404_ATTR_RW(pid_shrink);
 E404_ATTR_RW(file_sync);
 
 static struct attribute *e404_attrs[] = {
@@ -161,7 +159,6 @@ static struct attribute *e404_attrs[] = {
     &dtbo_type_attr.attr,
     &batt_profile_attr.attr,
     &kgsl_skip_zeroing_attr.attr,
-    &pid_shrink_attr.attr,
     &file_sync_attr.attr,
     &panel_width_attr.attr,
     &panel_height_attr.attr,
