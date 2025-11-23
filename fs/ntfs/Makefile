@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: GPL-2.0
 # Rules for making the NTFS driver.
 
+subdir-ccflags-y := -Os
+
 obj-$(CONFIG_NTFS_FS) += ntfs.o
 
 ntfs-y := aops.o attrib.o collate.o compress.o dir.o file.o \
