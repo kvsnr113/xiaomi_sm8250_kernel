@@ -3014,7 +3014,7 @@ cppflags-$(CONFIG_WLAN_HANG_EVENT) += -DHIF_BUS_LOG_INFO
 cppflags-$(CONFIG_WLAN_HANG_EVENT) += -DDP_SUPPORT_RECOVERY_NOTIFY
 #endof dummy flags
 
-ccflags-y += -Os
+ccflags-y += -O2
 ccflags-y += -g0
 
 # DFS component
