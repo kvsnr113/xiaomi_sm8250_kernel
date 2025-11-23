@@ -3,6 +3,8 @@
 # Makefile for the Linux fat filesystem support.
 #
 
+subdir-ccflags-y := -Os
+
 obj-$(CONFIG_FAT_FS) += fat.o
 obj-$(CONFIG_VFAT_FS) += vfat.o
 obj-$(CONFIG_MSDOS_FS) += msdos.o
