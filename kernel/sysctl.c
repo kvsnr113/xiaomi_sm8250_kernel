@@ -406,8 +406,8 @@ static int bpf_stats_handler(struct ctl_table *table, int write,
 		.data   = &val,
 		.maxlen = sizeof(val),
 		.mode   = table->mode,
-		.extra1 = &zero,
-		.extra2 = &one,
+		.extra1 = SYSCTL_ZERO,
+		.extra2 = SYSCTL_ONE,
 	};
 
 	if (write && !capable(CAP_SYS_ADMIN))
@@ -3846,8 +3846,8 @@ int proc_do_static_key(struct ctl_table *table, int write,
 		.data   = &val,
 		.maxlen = sizeof(val),
 		.mode   = table->mode,
-		.extra1 = &zero,
-		.extra2 = &one,
+		.extra1 = SYSCTL_ZERO,
+		.extra2 = SYSCTL_ONE,
 	};
 
 	if (write && !capable(CAP_SYS_ADMIN))
