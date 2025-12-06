@@ -8,7 +8,6 @@
 #include <linux/sysfs.h>
 
 struct e404_attributes {
-    int kernelsu;
     int effcpu;
     int rom_type;
     int dtbo_type;
@@ -23,7 +22,6 @@ struct e404_attributes {
 
 extern struct e404_attributes e404_data;
 
-extern int early_kernelsu;
 extern int early_effcpu;
 extern int early_rom_type;
 extern int early_dtbo_type;
