@@ -89,11 +89,6 @@ config E404_MIUI
 	bool "E404 DTBO for for MIUI/Hyperos Rom as default"
 	default n
 	depends on E404_SIGNATURE
-	
-config E404_KSU_DEFAULT
-	bool "E404 KSU as default"
-	default y
-	depends on E404_SIGNATURE
 
 config E404_EFFCPU_DEFAULT
 	bool "E404 EFFCPU as default"
