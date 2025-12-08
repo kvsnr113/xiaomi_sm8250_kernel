@@ -2603,9 +2603,11 @@ static int fts_ts_suspend(struct device *dev)
 		ts_data->point_id_changed = false;
 		FTS_INFO("%s Tp enter suspend, set old_point_id as default value\n", __func__);
 		fts_irq_enable();
+#ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
 		ret = fts_palm_enable(ts_data, 0);
 		if (!ret)
 			ts_data->palm_sensor_changed = false;
+#endif
 		goto release_finger;
 	}
 #endif
@@ -2633,9 +2635,11 @@ static int fts_ts_suspend(struct device *dev)
 		ts_data->old_point_id = 0xff;
 		ts_data->point_id_changed = false;
 		FTS_INFO("%s Tp enter suspend, set old_point_id as default value\n", __func__);
+#ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
 		ret = fts_palm_enable(ts_data, 0);
 		if (!ret)
 			ts_data->palm_sensor_changed = false;
+#endif
 		goto release_finger;
 	}
 sleep_mode:
@@ -2643,10 +2647,12 @@ sleep_mode:
 #if FTS_PINCTRL_EN
 	fts_pinctrl_select_suspend(ts_data);
 #endif
+#ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
 	/* TP enter sleep mode */
 	ret = fts_palm_enable(ts_data, 0);
 	if (!ret)
 		ts_data->palm_sensor_changed = false;
+#endif
 
 	ret = fts_i2c_write_reg(ts_data->client, FTS_REG_POWER_MODE, FTS_REG_POWER_MODE_SLEEP_VALUE);
 	if (ret < 0)

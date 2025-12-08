@@ -234,15 +234,15 @@ struct fts_ts_data {
 	struct mutex power_supply_lock;
 	struct work_struct power_supply_work;
 	struct notifier_block power_supply_notifier;
-#ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
 	u8 gesture_status;
+	u8 gesture_cmd;
+	bool gesture_cmd_delay;
+#ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
 	bool gamemode_enabled;
 	struct mutex cmd_update_mutex;
 	int palm_sensor_switch;
 	bool power_status;
 	bool is_expert_mode;
-	u8 gesture_cmd;
-	bool gesture_cmd_delay;
 #endif
 };
 
