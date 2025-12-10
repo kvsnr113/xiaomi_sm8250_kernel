@@ -375,6 +375,12 @@
 		#size-cells = <2>;
 		ranges;
 
+		/* placeholder, keep shits happy */
+		disp_rdump_region: memory@96000000 {
+    		reg = <0x0 0x96000000 0x0 0x1000>;
+    		no-map;
+		};
+
 		/* reserve qcom shits to prevent corruption */
 		tzlog_region: tzlog@146bf720 {
 			reg = <0x0 0x146bf720 0x0 0x3000>;
