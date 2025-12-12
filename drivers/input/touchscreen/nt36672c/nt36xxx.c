@@ -197,6 +197,7 @@ static void nvt_irq_enable(bool enable)
 		if (!ts->irq_enabled) {
 			enable_irq(ts->client->irq);
 			ts->irq_enabled = true;
+			irq_set_affinity(ts->client->irq, cpumask_of(7));
 		}
 	} else {
 		if (ts->irq_enabled) {
