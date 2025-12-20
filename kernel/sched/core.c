@@ -3413,15 +3413,6 @@ void sched_cgroup_fork(struct task_struct *p)
 	 * required yet, but lockdep gets upset if rules are violated.
 	 */
 	raw_spin_lock_irqsave(&p->pi_lock, flags);
-#ifdef CONFIG_CGROUP_SCHED
-	if (1) {
-		struct task_group *tg;
-		tg = container_of(task_css_check(p, cpu_cgrp_id, true),
-				  struct task_group, css);
-		tg = autogroup_task_group(p, tg);
-		p->sched_task_group = tg;
-	}
-#endif
 	rseq_migrate(p);
 	/*
 	 * We're setting the CPU for the first time, we don't migrate,
