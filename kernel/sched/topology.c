@@ -1220,11 +1220,12 @@ static inline void asym_cpu_capacity_update_data(int cpu)
 	unsigned long capacity = arch_scale_cpu_capacity(cpu);
 	struct asym_cap_data *insert_entry = NULL;
 	struct asym_cap_data *entry;
-
+ 
 	/*
 	 * Search if capacity already exits. If not, track which the entry
 	 * where we should insert to keep the list ordered descendingly.
 	 */
+
 	list_for_each_entry(entry, &asym_cap_list, link) {
 		if (capacity == entry->capacity)
 			goto done;
@@ -1305,16 +1306,13 @@ static void set_domain_attribute(struct sched_domain *sd,
 	if (!attr || attr->relax_domain_level < 0) {
 		if (default_relax_domain_level < 0)
 			return;
-		else
-			request = default_relax_domain_level;
+		request = default_relax_domain_level;
 	} else
 		request = attr->relax_domain_level;
-	if (request < sd->level) {
+
+	if (sd->level >= request) {
 		/* Turn off idle balance on this domain: */
 		sd->flags &= ~(SD_BALANCE_WAKE|SD_BALANCE_NEWIDLE);
-	} else {
-		/* Turn on idle balance on this domain: */
-		sd->flags |= (SD_BALANCE_WAKE|SD_BALANCE_NEWIDLE);
 	}
 }
 
