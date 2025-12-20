@@ -691,6 +691,7 @@ __initcall(init_sched_debug_procfs);
 
 #define __P(F)	SEQ_printf(m, "%-45s:%21Ld\n",	     #F, (long long)F)
 #define   P(F)	SEQ_printf(m, "%-45s:%21Ld\n",	     #F, (long long)p->F)
+#define   PM(F, M) __PS(#F, p->F & (M))
 #define __PN(F)	SEQ_printf(m, "%-45s:%14Ld.%06ld\n", #F, SPLIT_NS((long long)F))
 #define   PN(F)	SEQ_printf(m, "%-45s:%14Ld.%06ld\n", #F, SPLIT_NS((long long)p->F))
 
