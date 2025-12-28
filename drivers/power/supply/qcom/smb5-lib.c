@@ -5576,6 +5576,7 @@ int smblib_get_prop_usb_voltage_max(struct smb_charger *chg,
 	case POWER_SUPPLY_TYPE_USB_HVDCP_3P5:
 	case POWER_SUPPLY_TYPE_USB_HVDCP_3:
 		val->intval = MICRO_12V;
+		break;
 	case POWER_SUPPLY_TYPE_USB_PD:
 		val->intval = chg->voltage_max_uv;
 		break;
