@@ -5447,7 +5447,7 @@ drm_hdmi_vendor_infoframe_from_display_mode(struct hdmi_vendor_infoframe *frame,
 		return -EINVAL;
 
 #ifdef CONFIG_HDMI
-    err = hdmi_avi_infoframe_init(frame);
+    err = hdmi_vendor_infoframe_init(frame);
     if (err < 0)
         return err;
 #else
