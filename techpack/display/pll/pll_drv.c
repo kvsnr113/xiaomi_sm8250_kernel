@@ -13,6 +13,9 @@
 #include <linux/iopoll.h>
 #include "pll_drv.h"
 #include "dsi_pll.h"
+#ifdef CONFIG_MSM_EXT_DISPLAY
+#include "dp_pll.h"
+#endif
 #include "hdmi_pll.h"
 
 int mdss_pll_resource_enable(struct mdss_pll_resources *pll_res, bool enable)
@@ -131,10 +134,20 @@ static int mdss_pll_resource_parse(struct platform_device *pdev,
 		pll_res->pll_interface_type = MDSS_DSI_PLL_7NM_V2;
 	else if (!strcmp(compatible_stream, "qcom,mdss_dsi_pll_7nm_v4_1"))
 		pll_res->pll_interface_type = MDSS_DSI_PLL_7NM_V4_1;
-	#ifdef CONFIG_HDMI
+#ifdef CONFIG_MSM_EXT_DISPLAY
+	else if (!strcmp(compatible_stream, "qcom,mdss_dp_pll_10nm"))
+		pll_res->pll_interface_type = MDSS_DP_PLL_10NM;
+	else if (!strcmp(compatible_stream, "qcom,mdss_dp_pll_7nm"))
+		pll_res->pll_interface_type = MDSS_DP_PLL_7NM;
+	else if (!strcmp(compatible_stream, "qcom,mdss_dp_pll_7nm_v2"))
+		pll_res->pll_interface_type = MDSS_DP_PLL_7NM_V2;
+	else if (!strcmp(compatible_stream, "qcom,mdss_dp_pll_14nm"))
+		pll_res->pll_interface_type = MDSS_DP_PLL_14NM;
+#endif
+#ifdef CONFIG_HDMI
 	else if (!strcmp(compatible_stream, "qcom,mdss_hdmi_pll_28lpm"))
 		pll_res->pll_interface_type = MDSS_HDMI_PLL_28LPM;
-	#endif
+#endif
 	else
 		goto err;
 
@@ -156,11 +169,23 @@ static int mdss_pll_clock_register(struct platform_device *pdev,
 	case MDSS_DSI_PLL_7NM_V4_1:
 		rc = dsi_pll_clock_register_7nm(pdev, pll_res);
 		break;
-	#ifdef CONFIG_HDMI
+#ifdef CONFIG_MSM_EXT_DISPLAY
+	case MDSS_DP_PLL_10NM:
+		rc = dp_pll_clock_register_10nm(pdev, pll_res);
+		break;
+	case MDSS_DP_PLL_7NM:
+	case MDSS_DP_PLL_7NM_V2:
+		rc = dp_pll_clock_register_7nm(pdev, pll_res);
+		break;
+	case MDSS_DP_PLL_14NM:
+		rc = dp_pll_clock_register_14nm(pdev, pll_res);
+		break;
+#endif
+#ifdef CONFIG_HDMI
 	case MDSS_HDMI_PLL_28LPM:
 		rc = hdmi_pll_clock_register_28lpm(pdev, pll_res);
 		break;
-	#endif
+#endif
 	case MDSS_UNKNOWN_PLL:
 	default:
 		rc = -EINVAL;
@@ -359,6 +384,12 @@ static const struct of_device_id mdss_pll_dt_match[] = {
 	{.compatible = "qcom,mdss_dsi_pll_7nm"},
 	{.compatible = "qcom,mdss_dsi_pll_7nm_v2"},
 	{.compatible = "qcom,mdss_dsi_pll_7nm_v4_1"},
+#ifdef CONFIG_MSM_EXT_DISPLAY
+	{.compatible = "qcom,mdss_dp_pll_7nm"},
+	{.compatible = "qcom,mdss_dp_pll_7nm_v2"},
+	{.compatible = "qcom,mdss_dp_pll_10nm"},
+	{.compatible = "qcom,mdss_dp_pll_14nm"},
+#endif
 	{},
 };
 
