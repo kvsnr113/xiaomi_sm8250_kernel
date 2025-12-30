@@ -1644,14 +1644,20 @@ static void cfq_pd_offline(struct blkg_policy_data *pd)
 	int i;
 
 	for (i = 0; i < IOPRIO_BE_NR; i++) {
-		if (cfqg->async_cfqq[0][i])
+		if (cfqg->async_cfqq[0][i]) {
 			cfq_put_queue(cfqg->async_cfqq[0][i]);
-		if (cfqg->async_cfqq[1][i])
+			cfqg->async_cfqq[0][i] = NULL;
+		}
+		if (cfqg->async_cfqq[1][i]) {
 			cfq_put_queue(cfqg->async_cfqq[1][i]);
+			cfqg->async_cfqq[1][i] = NULL;
+		}
 	}
 
-	if (cfqg->async_idle_cfqq)
+	if (cfqg->async_idle_cfqq) {
 		cfq_put_queue(cfqg->async_idle_cfqq);
+		cfqg->async_idle_cfqq = NULL;
+	}
 
 	/*
 	 * @blkg is going offline and will be ignored by
@@ -3258,8 +3264,12 @@ static struct cfq_group *cfq_get_next_cfqg(struct cfq_data *cfqd)
 
 static void cfq_choose_cfqg(struct cfq_data *cfqd)
 {
-	struct cfq_group *cfqg = cfq_get_next_cfqg(cfqd);
+	struct cfq_group *cfqg;
 	u64 now = ktime_get_ns();
+
+	cfqg = cfq_get_next_cfqg(cfqd);
+	if (unlikely(!cfqg))
+		return;
 
 	cfqd->serving_group = cfqg;
 
@@ -3826,6 +3836,7 @@ static void check_blkcg_changed(struct cfq_io_cq *cic, struct bio *bio)
 	if (cfqq) {
 		cfq_log_cfqq(cfqd, cfqq, "changed cgroup");
 		cic_set_cfqq(cic, NULL, true);
+		cfq_put_cooperator(cfqq);
 		cfq_put_queue(cfqq);
 	}
 
