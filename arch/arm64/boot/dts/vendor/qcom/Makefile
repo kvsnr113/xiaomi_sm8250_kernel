@@ -10,7 +10,7 @@ endif
 ifeq ($(CONFIG_BOARD_APOLLO),y)
 dtbo-$(CONFIG_BOARD_APOLLO) += \
                 apollo-sm8250-overlay.dtbo
-apollo-sm8250-overlay.dtbo-base := kona-v2.1.dtb
+apollo-sm8250-overlay.dtbo-base := kona-gold.dtb
 endif
 
 ifeq ($(CONFIG_BOARD_CAS),y)
@@ -46,7 +46,7 @@ endif
 ifeq ($(CONFIG_BOARD_LMI),y)
 dtbo-$(CONFIG_BOARD_LMI) += \
                 lmi-sm8250-overlay.dtbo
-lmi-sm8250-overlay.dtbo-base := kona-v2.1.dtb
+lmi-sm8250-overlay.dtbo-base := kona-gold.dtb
 endif
 
 ifeq ($(CONFIG_BOARD_PIPA),y)

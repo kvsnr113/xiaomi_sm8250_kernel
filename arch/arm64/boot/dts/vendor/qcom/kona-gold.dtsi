@@ -7,5 +7,5 @@
 	qcom,msm-id = <356 0x20001>;
 };
 
-#include "kona-v2-gpu.dtsi"
+#include "kona-gold-gpu.dtsi"
 #include "kona-v2.1-gpu.dtsi"
