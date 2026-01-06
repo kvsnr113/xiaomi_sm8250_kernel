@@ -14,6 +14,7 @@ struct e404_attributes {
     int batt_profile;
     int kgsl_skip_zeroing;
     int file_sync;
+    int avoid_dirty_pte;
     int panel_width;
     int panel_height;
     int oem_panel_width;

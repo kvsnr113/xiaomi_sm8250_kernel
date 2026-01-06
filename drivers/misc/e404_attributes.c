@@ -9,6 +9,7 @@ struct e404_attributes e404_data = {
     .batt_profile = 1,
     .kgsl_skip_zeroing = 0,
     .file_sync = 1,
+    .avoid_dirty_pte = 0,
     .panel_width = 70,
     .panel_height = 155,
     .oem_panel_width = 700,
@@ -122,6 +123,7 @@ E404_ATTR_RO(oem_panel_height);
 
 E404_ATTR_RW(kgsl_skip_zeroing);
 E404_ATTR_RW(file_sync);
+E404_ATTR_RW(avoid_dirty_pte);
 
 static struct attribute *e404_attrs[] = {
     &effcpu_attr.attr,
@@ -130,6 +132,7 @@ static struct attribute *e404_attrs[] = {
     &batt_profile_attr.attr,
     &kgsl_skip_zeroing_attr.attr,
     &file_sync_attr.attr,
+    &avoid_dirty_pte_attr.attr,
     &panel_width_attr.attr,
     &panel_height_attr.attr,
     &oem_panel_width_attr.attr,
