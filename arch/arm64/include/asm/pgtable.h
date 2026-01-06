@@ -47,6 +47,10 @@
 #include <linux/mm_types.h>
 #include <linux/sched.h>
 
+#ifdef CONFIG_E404_SIGNATURE
+#include <linux/e404_attributes.h>
+#endif
+
 extern void __pte_error(const char *file, int line, unsigned long val);
 extern void __pmd_error(const char *file, int line, unsigned long val);
 extern void __pud_error(const char *file, int line, unsigned long val);
@@ -156,8 +160,16 @@ static inline pte_t set_pte_bit(pte_t pte, pgprot_t prot)
 static inline pte_t pte_mkwrite(pte_t pte)
 {
 	pte = set_pte_bit(pte, __pgprot(PTE_WRITE));
-	if (pte_sw_dirty(pte))
+#ifdef CONFIG_E404_SIGNATURE
+	if (e404_data.avoid_dirty_pte == 1) {
+		if (pte_sw_dirty(pte))
+			pte = clear_pte_bit(pte, __pgprot(PTE_RDONLY));
+	} else {
 		pte = clear_pte_bit(pte, __pgprot(PTE_RDONLY));
+	}
+#else
+	pte = clear_pte_bit(pte, __pgprot(PTE_RDONLY));
+#endif
 	return pte;
 }
 
