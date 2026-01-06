@@ -24,8 +24,6 @@
 	qcom,spss-prod-firmware-name = "spss2p";	/* 8 chars max */
 };
 
-#include "kona-v2-gpu.dtsi"
-
 &cpu0_cpu_l3_latmon {
 	qcom,core-dev-table =
 		<  300000  300000000 >,
