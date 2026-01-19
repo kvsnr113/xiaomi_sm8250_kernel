@@ -40,6 +40,10 @@ case "$*" in
         export PATH="$BASE_DIR/toolchains/neutron-clang/bin:$PATH"
         TC="Neutron-Clang"
         ;;
+    *llvm*)
+        export PATH="$BASE_DIR/toolchains/llvm-clang/bin:$PATH"
+        TC="LLVM-Clang"
+        ;;
     *eva*)
         GCC64_DIR="$BASE_DIR/toolchains/gcc/gcc-arm64/bin/"
         GCC32_DIR="$BASE_DIR/toolchains/gcc/gcc-arm/bin/"
@@ -59,6 +63,9 @@ case "$*" in
         elif [[ -d "$BASE_DIR/toolchains/neutron-clang" ]]; then
             export PATH="$BASE_DIR/toolchains/neutron-clang/bin:$PATH"
             TC="Neutron-Clang"
+        elif [[ -d "$BASE_DIR/toolchains/llvm-clang" ]]; then
+            export PATH="$BASE_DIR/toolchains/llvm-clang/bin:$PATH"
+            TC="LLVM-Clang"
         else
             echo "-- !! Please provide a toolchain !! --"
             exit 1
