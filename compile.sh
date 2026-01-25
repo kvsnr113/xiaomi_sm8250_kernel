@@ -88,7 +88,7 @@ esac
 for device in "${!DEVICE_MAP[@]}"; do
     if [[ "$*" == *"$device"* ]]; then
         IFS=':' read -r TARGET DEFCONFIG <<< "${DEVICE_MAP[$device]}"
-        sed -i "/devicename=/c\devicename=${device};" "$AK3_DIR/anykernel.sh"
+        sed -i "/devicename=/c\devicename=${device}" "$AK3_DIR/anykernel.sh"
         break
     fi
 done
