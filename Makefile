@@ -702,7 +702,7 @@ KBUILD_LDFLAGS  += -O2
 endif
 
 ifeq ($(cc-name),clang)
-KBUILD_CFLAGS   += -mllvm -hot-cold-split=true
+KBUILD_CFLAGS  += $(call cc-option,-mllvm -hot-cold-split=true)
 
 KBUILD_CFLAGS  += $(call cc-option,-mllvm -enable-ml-inliner=release)
 KBUILD_CFLAGS  += $(call cc-option,-mllvm -regalloc-enable-advisor=release)
@@ -754,24 +754,24 @@ KBUILD_CFLAGS += $(stackp-flags-y)
 
 ifeq ($(cc-name),clang)
 ifdef CONFIG_POLLY_CLANG
-KBUILD_CFLAGS	+= -mllvm -polly \
-		   -mllvm -polly-ast-use-context \
-		   -mllvm -polly-invariant-load-hoisting \
-		   -mllvm -polly-run-inliner \
-		   -mllvm -polly-vectorizer=stripmine
+KBUILD_CFLAGS += $(call cc-option,-mllvm -polly)
+KBUILD_CFLAGS += $(call cc-option,-mllvm -polly-ast-use-context)
+KBUILD_CFLAGS += $(call cc-option,-mllvm -polly-invariant-load-hoisting)
+KBUILD_CFLAGS += $(call cc-option,-mllvm -polly-run-inliner)
+KBUILD_CFLAGS += $(call cc-option,-mllvm -polly-vectorizer=stripmine)
 ifeq ($(shell test $(CONFIG_CLANG_VERSION) -gt 130000; echo $$?),0)
-KBUILD_CFLAGS	+= -mllvm -polly-loopfusion-greedy=1 \
-		   -mllvm -polly-reschedule=1 \
-		   -mllvm -polly-postopts=1
+KBUILD_CFLAGS += $(call cc-option,-mllvm -polly-loopfusion-greedy=1)
+KBUILD_CFLAGS += $(call cc-option,-mllvm -polly-reschedule=1)
+KBUILD_CFLAGS += $(call cc-option,-mllvm -polly-postopts=1)
 else
-KBUILD_CFLAGS	+= -mllvm -polly-opt-fusion=max
+KBUILD_CFLAGS += $(call cc-option,-mllvm -polly-opt-fusion=max)
 endif
 # Polly may optimise loops with dead paths beyound what the linker
 # can understand. This may negate the effect of the linker's DCE
 # so we tell Polly to perfom proven DCE on the loops it optimises
 # in order to preserve the overall effect of the linker's DCE.
 ifdef CONFIG_LD_DEAD_CODE_DATA_ELIMINATION
-KBUILD_CFLAGS	+= -mllvm -polly-run-dce
+KBUILD_CFLAGS += $(call cc-option,-mllvm -polly-run-dce)
 endif
 endif
 ifneq ($(CROSS_COMPILE),)
@@ -956,7 +956,7 @@ CC_FLAGS_LTO	+= -fvisibility=hidden
 CC_FLAGS_LTO	+= -fsplit-machine-functions
 
 # Limit inlining across translation units to reduce binary size
-KBUILD_LDFLAGS += -mllvm -import-instr-limit=40
+KBUILD_LDFLAGS += $(call cc-option,-mllvm -import-instr-limit=40)
 
 # Check for frame size exceeding threshold during prolog/epilog insertion.
 ifneq ($(CONFIG_FRAME_WARN),0)
