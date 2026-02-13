@@ -515,7 +515,7 @@ static int __init oplus_project_init(void)
 
 #ifdef CONFIG_E404_SIGNATURE
     if (e404_data.rom_type != 3) {
-        pr_alert("E404: Skipping oplus project init)\n");
+        pr_alert("E404: Skipping oplus project init\n");
         return 0;
     }
 #endif
