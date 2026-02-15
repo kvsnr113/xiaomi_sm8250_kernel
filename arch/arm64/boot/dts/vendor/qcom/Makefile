@@ -25,6 +25,12 @@ dtbo-$(CONFIG_BOARD_CMI) += \
 cmi-sm8250-overlay.dtbo-base := kona-v2.1.dtb
 endif
 
+ifeq ($(CONFIG_BOARD_DAGU),y)
+dtbo-$(CONFIG_BOARD_DAGU) += \
+                dagu-sm8250-overlay.dtbo
+dagu-sm8250-overlay.dtbo-base :=  kona-v2.1.dtb
+endif
+
 ifeq ($(CONFIG_BOARD_ELISH),y)
 dtbo-$(CONFIG_BOARD_ELISH) += \
                 elish-sm8250-overlay.dtbo
@@ -41,6 +47,12 @@ ifeq ($(CONFIG_BOARD_LMI),y)
 dtbo-$(CONFIG_BOARD_LMI) += \
                 lmi-sm8250-overlay.dtbo
 lmi-sm8250-overlay.dtbo-base := kona-v2.1.dtb
+endif
+
+ifeq ($(CONFIG_BOARD_PIPA),y)
+dtbo-$(CONFIG_BOARD_PIPA) += \
+                pipa-sm8250-overlay.dtbo
+pipa-sm8250-overlay.dtbo-base := kona-v2.1.dtb
 endif
 
 ifeq ($(CONFIG_BOARD_THYME),y)

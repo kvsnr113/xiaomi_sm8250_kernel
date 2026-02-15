@@ -47,6 +47,10 @@
 #include "debug.h"
 #include "xhci.h"
 
+#ifdef CONFIG_PS5169
+#include "../pd/ps5169.h"
+#endif
+
 static bool bc12_compliance;
 module_param(bc12_compliance, bool, 0644);
 MODULE_PARM_DESC(bc12_compliance, "Disable sending dp pulse for CDP");
@@ -65,6 +69,10 @@ MODULE_PARM_DESC(bc12_compliance, "Disable sending dp pulse for CDP");
 /* XHCI registers */
 #define USB3_HCSPARAMS1		(0x4)
 #define USB3_PORTSC		(0x420)
+
+#define DWC3_LLUCTL    0xd024
+/* Force Gen1 speed on Gen2 link */
+#define DWC3_LLUCTL_FORCE_GEN1 BIT(10)
 
 /**
  *  USB QSCRATCH Hardware registers
@@ -363,6 +371,7 @@ struct dwc3_msm {
 	dma_addr_t		dummy_gsi_db_dma;
 	int			orientation_override;
 	bool			usb_data_enabled;
+	bool			force_gen1;
 };
 
 #define USB_HSPHY_3P3_VOL_MIN		3050000 /* uV */
@@ -2284,6 +2293,9 @@ static void dwc3_msm_power_collapse_por(struct dwc3_msm *mdwc)
 		dwc3_en_sleep_mode(dwc);
 	}
 
+	/* Force Gen1 speed on Gen2 controller if required */
+	if (mdwc->force_gen1)
+		 dwc3_msm_write_reg_field(mdwc->base, DWC3_LLUCTL,  DWC3_LLUCTL_FORCE_GEN1, 1);
 }
 
 static int dwc3_msm_prepare_suspend(struct dwc3_msm *mdwc)
@@ -4042,6 +4054,8 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 
 	mutex_init(&mdwc->suspend_resume_mutex);
 
+	mdwc->force_gen1 = of_property_read_bool(node, "qcom,force-gen1");
+
 	/* set the initial value */
 	mdwc->usb_data_enabled = true;
 
@@ -4413,6 +4427,10 @@ static int dwc3_otg_start_host(struct dwc3_msm *mdwc, int on)
 		msm_dwc3_perf_vote_update(mdwc, true);
 		schedule_delayed_work(&mdwc->perf_vote_work,
 				msecs_to_jiffies(1000 * PM_QOS_SAMPLE_SEC));
+#ifdef CONFIG_PS5169
+		if (!has_dp_flag)
+			ps5169_cfg_usb();
+#endif
 	} else {
 		dev_dbg(mdwc->dev, "%s: turn off host\n", __func__);
 
@@ -4532,6 +4550,10 @@ static int dwc3_otg_start_peripheral(struct dwc3_msm *mdwc, int on)
 		msm_dwc3_perf_vote_update(mdwc, true);
 		schedule_delayed_work(&mdwc->perf_vote_work,
 				msecs_to_jiffies(1000 * PM_QOS_SAMPLE_SEC));
+#ifdef CONFIG_PS5169
+		if (!has_dp_flag)
+			ps5169_cfg_usb();
+#endif
 	} else {
 		dev_dbg(mdwc->dev, "%s: turn off gadget %s\n",
 					__func__, dwc->gadget.name);

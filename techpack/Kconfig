@@ -2,17 +2,22 @@ menu "Xiaomi Camera Configuration"
 
 config CAMERA_NONEDXO
 	bool "Enable None-DXO Camera modifications"
-	help
+    help
 	  "Enable None-DXO Camera modifications"
 
 config CAMERA_CAS
 	bool "Enable Xiaomi CAS Camera modifications"
-	help
+    help
 	  "Enable Xiaomi CAS Camera modifications"
 	  
 config CAMERA_LMI
 	bool "Enable Xiaomi LMI Camera modifications"
 	help
 	  "Enable Xiaomi LMI Camera modifications"
+
+config TECHPACK_CAMERA_XIAOMI_TABLET
+    bool "Xiaomi camera tablet"
+    help
+      "Enable Xiaomi Tablet Camera modifications"
 
 endmenu

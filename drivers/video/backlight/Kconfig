@@ -510,6 +510,12 @@ config THERMAL_DIMMING
 	help
 	  Support for thermal backlight dimming.
 
+config BACKLIGHT_KTZ8866
+	tristate "KTZ8866 Backlight"
+	depends on I2C
+	help
+	  Support for thermal backlight dimming.
+
 endif # BACKLIGHT_CLASS_DEVICE
 
 endif # BACKLIGHT_LCD_SUPPORT

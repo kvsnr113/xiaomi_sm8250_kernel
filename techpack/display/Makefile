@@ -1,12 +1,21 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
 # auto-detect subdirs
+
 ifeq ($(CONFIG_ARCH_KONA), y)
-include $(srctree)/techpack/display/config/konadisp.conf
+	ifeq ($(CONFIG_BOARD_PIPA), y)
+		include $(srctree)/techpack/display/config/pipadisp.conf
+	else
+		include $(srctree)/techpack/display/config/konadisp.conf
+	endif
 endif
 
 ifeq ($(CONFIG_ARCH_KONA), y)
-LINUXINCLUDE    += -include $(srctree)/techpack/display/config/konadispconf.h
+	ifeq ($(CONFIG_BOARD_PIPA), y)
+		LINUXINCLUDE    += -include $(srctree)/techpack/display/config/pipadispconf.h
+	else
+		LINUXINCLUDE    += -include $(srctree)/techpack/display/config/konadispconf.h
+	endif
 endif
 
 ifeq ($(CONFIG_ARCH_LITO), y)

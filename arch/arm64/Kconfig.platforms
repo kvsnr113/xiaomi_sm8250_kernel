@@ -492,6 +492,12 @@ config BOARD_LMI
 	help
 	  This enables support for Xiaomi Redmi K30 Pro / POCO F2 Pro.
 
+config BOARD_PIPA
+	bool "pipa platform"
+	select BOARD_XIAOMI_SM8250
+	help
+	  This enables support for Xiaomi Mi Pad 6.
+
 config BOARD_MUNCH
 	bool "munch platform"
 	select BOARD_XIAOMI_SM8250
