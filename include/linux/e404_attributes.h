@@ -6,6 +6,12 @@
 #include <linux/kernel.h>
 #include <linux/kobject.h>
 #include <linux/sysfs.h>
+#include <linux/sched.h>
+
+#define E404_BLOCKLIST_STRLEN 256
+#define E404_MAX_BLOCKED 16
+
+bool e404_comm_blocked(const char *comm);
 
 struct e404_attributes {
     int effcpu;
@@ -19,6 +25,7 @@ struct e404_attributes {
     int panel_height;
     int oem_panel_width;
     int oem_panel_height;
+    char bg_blocklist[E404_BLOCKLIST_STRLEN];
 };
 
 extern struct e404_attributes e404_data;
