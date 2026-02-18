@@ -193,11 +193,11 @@
 				reg = <8>;
 				qcom,gpu-freq = <305000000>;
 				qcom,bus-freq-ddr7 = <3>;
-				qcom,bus-min-ddr7 = <2>;
+				qcom,bus-min-ddr7 = <1>;
 				qcom,bus-max-ddr7 = <9>;
 
 				qcom,bus-freq-ddr8 = <3>;
-				qcom,bus-min-ddr8 = <2>;
+				qcom,bus-min-ddr8 = <1>;
 				qcom,bus-max-ddr8 = <9>;
 
 				qcom,acd-level = <0xa02b5ffd>;
@@ -335,11 +335,11 @@
 				reg = <8>;
 				qcom,gpu-freq = <305000000>;
 				qcom,bus-freq-ddr7 = <3>;
-				qcom,bus-min-ddr7 = <2>;
+				qcom,bus-min-ddr7 = <1>;
 				qcom,bus-max-ddr7 = <9>;
 
 				qcom,bus-freq-ddr8 = <3>;
-				qcom,bus-min-ddr8 = <2>;
+				qcom,bus-min-ddr8 = <1>;
 				qcom,bus-max-ddr8 = <9>;
 
 				qcom,acd-level = <0xa02b5ffd>;
@@ -477,11 +477,11 @@
 				reg = <8>;
 				qcom,gpu-freq = <305000000>;
 				qcom,bus-freq-ddr7 = <3>;
-				qcom,bus-min-ddr7 = <2>;
+				qcom,bus-min-ddr7 = <1>;
 				qcom,bus-max-ddr7 = <9>;
 
 				qcom,bus-freq-ddr8 = <3>;
-				qcom,bus-min-ddr8 = <2>;
+				qcom,bus-min-ddr8 = <1>;
 				qcom,bus-max-ddr8 = <9>;
 
 				qcom,acd-level = <0xa02b5ffd>;
@@ -619,11 +619,11 @@
 				reg = <8>;
 				qcom,gpu-freq = <305000000>;
 				qcom,bus-freq-ddr7 = <3>;
-				qcom,bus-min-ddr7 = <2>;
+				qcom,bus-min-ddr7 = <1>;
 				qcom,bus-max-ddr7 = <9>;
 
 				qcom,bus-freq-ddr8 = <3>;
-				qcom,bus-min-ddr8 = <2>;
+				qcom,bus-min-ddr8 = <1>;
 				qcom,bus-max-ddr8 = <9>;
 
 				qcom,acd-level = <0xa02b5ffd>;
