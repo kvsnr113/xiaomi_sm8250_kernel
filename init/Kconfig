@@ -1345,6 +1345,14 @@ config SCHED_TUNE
 
 	  If unsure, say N.
 
+config SCHED_TUNE_DUMMY
+	bool "Dummy SCHEDTUNE nodes"
+	depends on SMP
+	depends on !SCHED_TUNE && !CGROUP_SCHEDTUNE
+	default y
+	help
+	  Create dummy SCHEDTUNE nodes to satisfy rom compability.
+
 config STUNE_ASSIST
 	bool "SchedTune configuration helper"
 	depends on SCHED_TUNE
