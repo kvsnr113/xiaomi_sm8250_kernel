@@ -82,7 +82,8 @@ UTS_TRUNCATE="cut -b -$UTS_LEN"
 CC_VERSION=$(echo "$CC_VERSION" \
   | sed -E 's/\bversion \b//I' \
   | sed -E 's/\bclang\b/Clang/I' \
-  | sed -E 's/\bgcc\b/GCC/I')
+  | sed -E 's/\bgcc\b/GCC/I' \
+  | sed -E 's/([0-9]+\.[0-9]+\.[0-9]+)git/\1/')
 
   LD_VERSION=$($LD -v | head -n1 | sed 's/(compatible with [^)]*)//' \
 		      | perl -pe 's/\(http.*?\)//gs; s/\s*\(\/[^)]*\)//g' \
