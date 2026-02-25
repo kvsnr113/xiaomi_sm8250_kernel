@@ -809,6 +809,7 @@ endif
 # These warnings generated too much noise in a regular build.
 # Use make W=1 to enable them (see scripts/Makefile.extrawarn)
 KBUILD_CFLAGS += $(call cc-disable-warning, unused-but-set-variable)
+KBUILD_CFLAGS += $(call cc-disable-warning, default-const-init-unsafe)
 
 ifdef CONFIG_LTO_CLANG
 KBUILD_LDFLAGS += --lto-O3 --plugin-opt=O3 --strip-debug
