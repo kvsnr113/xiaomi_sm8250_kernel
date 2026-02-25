@@ -1895,7 +1895,7 @@ static int rpmh_regulator_probe(struct platform_device *pdev)
 
 	aggr_vreg->addr = cmd_db_read_addr(aggr_vreg->resource_name);
 	if (!aggr_vreg->addr) {
-		aggr_vreg_err(aggr_vreg, "could not find RPMh address for resource\n");
+		aggr_vreg_debug(aggr_vreg, "could not find RPMh address for resource\n");
 		return -ENODEV;
 	}
 
