@@ -506,12 +506,19 @@ static int qcom_cpufreq_hw_read_lut(struct platform_device *pdev,
 		return -ENOMEM;
 
 #ifdef CONFIG_E404_SIGNATURE
-	if (e404_data.effcpu == 1) {
+	if (e404_data.cpufreq == 1) {
 		snprintf(tbl_name, sizeof(tbl_name), "qcom,effcpufreq-table-%d", domain_index);
 		pr_alert("E404: Using effcpu CPUFreq from DTB");
 		if (!of_find_property(dev->of_node, tbl_name, NULL)) {
 			snprintf(tbl_name, sizeof(tbl_name), "qcom,cpufreq-table-%d", domain_index);
 			pr_alert("E404: effcpu table not found, falling back to normal CPUFreq");
+		}
+	} else if (e404_data.cpufreq == 2) {
+		snprintf(tbl_name, sizeof(tbl_name), "qcom,perfcpufreq-table-%d", domain_index);
+		pr_alert("E404: Using perfcpu CPUFreq from DTB");
+		if (!of_find_property(dev->of_node, tbl_name, NULL)) {
+			snprintf(tbl_name, sizeof(tbl_name), "qcom,cpufreq-table-%d", domain_index);
+			pr_alert("E404: perfcpu table not found, falling back to normal CPUFreq");
 		}
 	} else {
 		snprintf(tbl_name, sizeof(tbl_name), "qcom,cpufreq-table-%d", domain_index);
