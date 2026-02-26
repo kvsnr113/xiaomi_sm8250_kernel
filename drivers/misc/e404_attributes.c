@@ -7,7 +7,7 @@ static u8   blocked_len[E404_MAX_BLOCKED];
 static int  blocked_cnt;
 
 struct e404_attributes e404_data = {
-    .effcpu = 0,
+    .cpufreq = 0,
     .rom_type = 1,
     .dtbo_type = 1,
     .batt_profile = 1,
@@ -24,9 +24,11 @@ struct e404_attributes e404_data = {
 static struct kobject *e404_kobj;
 
 #ifdef CONFIG_E404_EFFCPU_DEFAULT
-int early_effcpu = 1;
+int early_cpufreq = 1;
+#elif CONFIG_E404_PERFCPU_DEFAULT
+int early_cpufreq = 2;
 #else
-int early_effcpu = 0;
+int early_cpufreq = 0;
 #endif
 
 #ifdef CONFIG_E404_MIUI
@@ -57,9 +59,11 @@ static int __init parse_e404_args(char *str)
         pr_alert("E404: Parsing flag: %s\n", arg);
 
         if (strcmp(arg, "dtb_effcpu") == 0)
-            early_effcpu = 1;
+            early_cpufreq = 1;
+        else if (strcmp(arg, "dtb_perfcpu") == 0)
+            early_cpufreq = 2;
         else if (strcmp(arg, "dtb_def") == 0)
-            early_effcpu = 0;
+            early_cpufreq = 0;
         else if (strcmp(arg, "rom_port") == 0)
             early_rom_type = 3;
         else if (strcmp(arg, "rom_oem") == 0)
@@ -83,13 +87,13 @@ static int __init parse_e404_args(char *str)
 early_param("e404_args", parse_e404_args);
 
 static void e404_parse_attributes(void) {
-    e404_data.effcpu = early_effcpu;
+    e404_data.cpufreq = early_cpufreq;
     e404_data.rom_type = early_rom_type;
     e404_data.dtbo_type = early_dtbo_type;
     e404_data.batt_profile = early_batt_profile;
 
-    pr_alert("E404 Early Attributes: EFFCPU=%d, RomType=%d, DTBOType=%d, BatteryProfile=%d\n",
-        e404_data.effcpu,
+    pr_alert("E404 Early Attributes: CPUFREQ=%d, RomType=%d, DTBOType=%d, BatteryProfile=%d\n",
+        e404_data.cpufreq,
         e404_data.rom_type,
         e404_data.dtbo_type,
         e404_data.batt_profile);
@@ -186,7 +190,7 @@ static ssize_t name##_store(struct kobject *kobj, struct kobj_attribute *attr, c
 } \
 static struct kobj_attribute name##_attr = __ATTR(name, 0664, name##_show, name##_store);
 
-E404_ATTR_RO(effcpu);
+E404_ATTR_RO(cpufreq);
 E404_ATTR_RO(rom_type);
 E404_ATTR_RO(dtbo_type);
 E404_ATTR_RO(batt_profile);
@@ -200,7 +204,7 @@ E404_ATTR_RW(file_sync);
 E404_ATTR_RW(avoid_dirty_pte);
 
 static struct attribute *e404_attrs[] = {
-    &effcpu_attr.attr,
+    &cpufreq_attr.attr,
     &rom_type_attr.attr,
     &dtbo_type_attr.attr,
     &batt_profile_attr.attr,

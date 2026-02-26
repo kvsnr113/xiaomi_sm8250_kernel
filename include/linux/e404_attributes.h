@@ -14,7 +14,7 @@
 bool e404_comm_blocked(const char *comm);
 
 struct e404_attributes {
-    int effcpu;
+    int cpufreq;
     int rom_type;
     int dtbo_type;
     int batt_profile;
@@ -30,7 +30,7 @@ struct e404_attributes {
 
 extern struct e404_attributes e404_data;
 
-extern int early_effcpu;
+extern int early_cpufreq;
 extern int early_rom_type;
 extern int early_dtbo_type;
 extern int early_batt_profile;
