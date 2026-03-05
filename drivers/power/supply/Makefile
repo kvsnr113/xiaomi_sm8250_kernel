@@ -89,6 +89,7 @@ obj-$(CONFIG_ARCH_QCOM)		+= qcom/
 obj-$(CONFIG_BOARD_CAS)	+= qcom_cas/
 obj-y	+= lionsemi/
 obj-y	+= maxim/
+obj-y   += maxim_pipa/
 obj-y	+= nuvolta/
 obj-y	+= renesas/
 obj-y	+= ti/
