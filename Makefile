@@ -699,23 +699,24 @@ KBUILD_AFLAGS   += -O2
 KBUILD_LDFLAGS  += -O2
 endif
 
-ifdef CONFIG_INLINE_OPTIMIZATION
-ifdef CONFIG_CC_IS_CLANG
-KBUILD_CFLAGS	+= -mllvm -inline-threshold=2500
-KBUILD_CFLAGS	+= -mllvm -inlinehint-threshold=2000
-KBUILD_CFLAGS	+= -mllvm -unroll-threshold=1200
-else ifdef CONFIG_CC_IS_GCC
-KBUILD_CFLAGS	+= --param max-inline-insns-single=600
-KBUILD_CFLAGS	+= --param max-inline-insns-auto=750
+ifeq ($(cc-name),clang)
+KBUILD_CFLAGS	+= $(call cc-option,-mllvm -hot-cold-split=true)
+KBUILD_CFLAGS	+= $(call cc-option,-mllvm -inline-threshold=2500)
+KBUILD_CFLAGS	+= $(call cc-option,-mllvm -inlinehint-threshold=2000)
+KBUILD_CFLAGS	+= $(call cc-option,-mllvm -unroll-threshold=1200)
+KBUILD_CFLAGS	+= $(call cc-option,-mllvm -enable-ml-inliner=release)
+KBUILD_CFLAGS	+= $(call cc-option,-mllvm -regalloc-enable-advisor=release)
+KBUILD_LDFLAGS	+= $(call cc-option,-mllvm -enable-ml-inliner=release)
+KBUILD_LDFLAGS	+= $(call cc-option,-mllvm -regalloc-enable-advisor=release)
 
-# We limit inlining to 5KB on the stack.
-KBUILD_CFLAGS	+= --param large-stack-frame=12288
+KBUILD_CFLAGS   += -mcpu=cortex-a55
+KBUILD_AFLAGS   += -mcpu=cortex-a55
+else
+KBUILD_CFLAGS	+= -fgraphite-identity -floop-nest-optimize
+KBUILD_CFLAGS	+= -fipa-pta -fgcse-sm
 
-KBUILD_CFLAGS	+= --param inline-min-speedup=5
-KBUILD_CFLAGS	+= --param inline-unit-growth=60
-endif
-endif
-
+KBUILD_CFLAGS   += -mcpu=cortex-a76.cortex-a55
+KBUILD_AFLAGS   += -mcpu=cortex-a76.cortex-a55
 endif
 
 # Tell gcc to never replace conditional load with a non-conditional one
@@ -813,7 +814,7 @@ KBUILD_CFLAGS += $(call cc-disable-warning, unused-but-set-variable)
 KBUILD_CFLAGS += $(call cc-disable-warning, default-const-init-unsafe)
 
 ifdef CONFIG_LTO_CLANG
-KBUILD_LDFLAGS += -O3 --lto-O3 --strip-debug
+KBUILD_LDFLAGS += -O3 --lto-O3 --plugin-opt=O3 --strip-debug
 else
 KBUILD_LDFLAGS += -O3 --strip-debug
 endif
