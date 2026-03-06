@@ -24,6 +24,10 @@
 /* add for get hw country */
 #include <soc/qcom/socinfo.h>
 
+#ifdef CONFIG_E404_SIGNATURE
+#include <linux/e404_attributes.h>
+#endif
+
 #define FG_GEN4_DEV_NAME	"qcom,fg-gen4"
 #define TTF_AWAKE_VOTER		"fg_ttf_awake"
 
@@ -2097,15 +2101,21 @@ static int fg_gen4_get_batt_profile(struct fg_dev *fg)
 #ifdef CONFIG_BATT_VERIFY_BY_DS28E16
 		profile_node = ERR_PTR(-ENXIO);
 
-        if (of_property_read_bool(node, "qcom,j3s-batt-profile") && !fg->profile_already_find) {
-            pr_alert("DT: forcing j3ssun_5000mah profile\n");
-            fg->profile_already_find = true;
-            /* Avoid retry queueing if verify/retry path exists */
-            retry_batt_profile = BATT_PROFILE_RETRY_COUNT_MAX;
-            profile_node = of_batterydata_get_best_profile(batt_node,
-                                fg->batt_id_ohms / 1000,
-                                "j3ssun_5000mah");
-        }
+#ifdef CONFIG_E404_SIGNATURE
+		/* force alioth to load 5000mah profile if user wanted */
+		if (e404_data.batt_profile == 2) {
+			if (of_property_read_bool(node, "qcom,j3s-batt-profile") && !fg->profile_already_find) {
+				pr_alert("E404: forcing j3ssun_5000mah profile\n");
+				fg->profile_already_find = true;
+				/* Avoid retry queueing if verify/retry path exists */
+            	retry_batt_profile = BATT_PROFILE_RETRY_COUNT_MAX;
+				profile_node = of_batterydata_get_best_profile(batt_node,
+									fg->batt_id_ohms / 1000,
+									"j3ssun_5000mah");
+			}
+		}
+#endif
+
 		/* if cmdline battery profile vendor is passed to fg driver, use cmdline result */
 		if (is_batt_vendor_gyb && !fg->profile_already_find) {
 			pr_err("is_batt_vendor_gyb is %d\n", is_batt_vendor_gyb);
@@ -2134,13 +2144,6 @@ static int fg_gen4_get_batt_profile(struct fg_dev *fg)
 			} else if ((chip->ds_page0[0] == 'N') || (chip->ds_page0[0] == 'A')) {
 				profile_node = of_batterydata_get_best_profile(batt_node,
 					fg->batt_id_ohms / 1000, "j2nvtbm4n_4780mah");
-			} else if ((chip->ds_page0[0] == 'S') || (chip->ds_page0[0] == 'X')) {
-				if (chip->dt.j3s_batt_profile)
-					profile_node = of_batterydata_get_best_profile(batt_node,
-						fg->batt_id_ohms / 1000, "j3ssun_5000mah");
-				else
-					profile_node = of_batterydata_get_best_profile(batt_node,
-						fg->batt_id_ohms / 1000, "j11sun_4700mah");
 			} else if (chip->ds_page0[0] == 'U') {
 				if (chip->dt.k11a_batt_profile)
 					profile_node = of_batterydata_get_best_profile(batt_node,
@@ -2148,6 +2151,13 @@ static int fg_gen4_get_batt_profile(struct fg_dev *fg)
 				else
 					profile_node = of_batterydata_get_best_profile(batt_node,
 							fg->batt_id_ohms / 1000, "K11A_FMT_4520mah");
+			} else if ((chip->ds_page0[0] == 'S') || (chip->ds_page0[0] == 'X')) {
+				if (chip->dt.j3s_batt_profile)
+					profile_node = of_batterydata_get_best_profile(batt_node,
+						fg->batt_id_ohms / 1000, "j3ssun_5000mah");
+				else
+					profile_node = of_batterydata_get_best_profile(batt_node,
+						fg->batt_id_ohms / 1000, "j11sun_4700mah");
 			}  else {
 				retry_batt_profile++;
 			}
@@ -2168,14 +2178,14 @@ static int fg_gen4_get_batt_profile(struct fg_dev *fg)
 				profile_node = of_batterydata_get_best_profile(batt_node,
 						fg->batt_id_ohms / 1000, "j2gybm4n_4780mah");
 			} else {
-				if (chip->dt.j3s_batt_profile) {
-					pr_warn("verifty battery fail. use default profile j3ssun_5000mah\n");
-					profile_node = of_batterydata_get_best_profile(batt_node,
-						fg->batt_id_ohms / 1000, "j3ssun_5000mah");
-				} else if (chip->dt.k11a_batt_profile) {
+				if (chip->dt.k11a_batt_profile) {
 					pr_warn("verifty battery fail. use default profile k11a_fmt_4520mah\n");
 					profile_node = of_batterydata_get_best_profile(batt_node,
 						fg->batt_id_ohms / 1000, "K11A_FMT_4520mah");
+				} else if (chip->dt.j3s_batt_profile) {
+					pr_warn("verifty battery fail. use default profile j3ssun_5000mah\n");
+					profile_node = of_batterydata_get_best_profile(batt_node,
+						fg->batt_id_ohms / 1000, "j3ssun_5000mah");
 				} else {
 					pr_warn("verifty battery fail. use default profile j11sun_4700mah\n");
 					profile_node = of_batterydata_get_best_profile(batt_node,

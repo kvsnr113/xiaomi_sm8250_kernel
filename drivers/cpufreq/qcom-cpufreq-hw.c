@@ -17,6 +17,10 @@
 #include <linux/sched.h>
 #include <linux/cpu_cooling.h>
 
+#ifdef CONFIG_E404_SIGNATURE
+#include <linux/e404_attributes.h>
+#endif
+
 #define CREATE_TRACE_POINTS
 #include <trace/events/dcvsh.h>
 
@@ -491,9 +495,9 @@ static int qcom_cpufreq_hw_read_lut(struct platform_device *pdev,
 	u32 data, src, lval, i, core_count, prev_cc, prev_freq, cur_freq, volt;
 	u32 vc;
 	unsigned long cpu;
-	int ret, of_len, max_index;
+	int ret, of_len, max_index = 0;
 	u32 *of_table = NULL;
-	char tbl_name[] = "qcom,cpufreq-table-##";
+	char tbl_name[32];
 	bool invalidate_freq;
 
 	c->table = devm_kcalloc(dev, lut_max_entries + 1,
@@ -501,8 +505,23 @@ static int qcom_cpufreq_hw_read_lut(struct platform_device *pdev,
 	if (!c->table)
 		return -ENOMEM;
 
-	snprintf(tbl_name, sizeof(tbl_name), "qcom,cpufreq-table-%d",
-		 domain_index);
+#ifdef CONFIG_E404_SIGNATURE
+	if (e404_data.effcpu == 1) {
+		snprintf(tbl_name, sizeof(tbl_name), "qcom,effcpufreq-table-%d", domain_index);
+		pr_alert("E404: Using effcpu CPUFreq from DTB");
+		if (!of_find_property(dev->of_node, tbl_name, NULL)) {
+			snprintf(tbl_name, sizeof(tbl_name), "qcom,cpufreq-table-%d", domain_index);
+			pr_alert("E404: effcpu table not found, falling back to normal CPUFreq");
+		}
+	} else {
+		snprintf(tbl_name, sizeof(tbl_name), "qcom,cpufreq-table-%d", domain_index);
+		pr_alert("E404: Using normal CPUFreq from DTB");
+	}
+#else
+	snprintf(tbl_name, sizeof(tbl_name), "qcom,cpufreq-table-%d", domain_index);
+	pr_alert("E404: Using default CPUFreq from DTB");
+#endif
+
 	if (of_find_property(dev->of_node, tbl_name, &of_len) && of_len > 0) {
 		of_len /= sizeof(*of_table);
 

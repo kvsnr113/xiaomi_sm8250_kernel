@@ -70,6 +70,39 @@ config THREAD_INFO_IN_TASK
 	  One subtle change that will be needed is to use try_get_task_stack()
 	  and put_task_stack() in save_thread_stack_tsk() and get_wchan().
 
+menu "E404 Kernel Configuration"
+
+config E404_ATTRIBUTES
+ 	tristate "Build E404 kernel attributes"
+ 	default y
+ 	help
+ 	  Enabling this require needed files of e404_attributes.c and e404_attributes.h
+	  Allow to build kernel with E404 attributes and sysfs features.
+
+config E404_OPLUS
+	bool "Build E404 with support for Oplus Rom"
+	default n
+	select OPLUS_OPROJECT
+	select OPLUS_NANDSWAP
+	depends on E404_ATTRIBUTES
+
+config E404_MIUI
+	bool "Set DTBO for for MIUI/Hyperos rom as default"
+	default n
+	depends on E404_ATTRIBUTES
+
+config E404_EFFCPU_DEFAULT
+	bool "Set efficient cpu frequency as default"
+	depends on E404_ATTRIBUTES
+	default n
+
+config E404_ALIOTH_5K_BATT_DEFAULT
+	bool "Set 5000 mAh battery profile for alioth as default"
+	depends on E404_ATTRIBUTES
+	default n
+
+endmenu
+
 menu "General setup"
 
 config BROKEN
