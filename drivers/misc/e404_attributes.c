@@ -9,14 +9,18 @@ static int  blocked_cnt;
 struct e404_attributes e404_data = {
     .effcpu = 0,
     .rom_type = 1,
-    .dtbo_type = 1,
+    .dtbo_type = 0,
     .batt_profile = 1,
     .kgsl_skip_zeroing = 0,
     .file_sync = 1,
     .panel_width = 70,
     .panel_height = 155,
+    .panel_width_pipa = 166,
+    .panel_height_pipa = 266,
     .oem_panel_width = 700,
     .oem_panel_height = 1550,
+    .oem_panel_width_pipa = 1662,
+    .oem_panel_height_pipa = 2660,
     .bg_blocklist = "com.shopee.id,com.lazada.android,com.tokopedia.tkpd",
 };
 
@@ -69,6 +73,10 @@ static int __init parse_e404_args(char *str)
             early_dtbo_type = 1;
         else if (strcmp(arg, "dtbo_oem") == 0)
             early_dtbo_type = 2;
+        else if (strcmp(arg, "dtbo_def_pipa") == 0)
+            early_dtbo_type = 3;
+        else if (strcmp(arg, "dtbo_oem_pipa") == 0)
+            early_dtbo_type = 4;
         else if (strcmp(arg, "batt_def") == 0)
             early_batt_profile = 1;
         else if (strcmp(arg, "batt_5k") == 0)
@@ -191,8 +199,12 @@ E404_ATTR_RO(dtbo_type);
 E404_ATTR_RO(batt_profile);
 E404_ATTR_RO(panel_width);
 E404_ATTR_RO(panel_height);
+E404_ATTR_RO(panel_width_pipa);
+E404_ATTR_RO(panel_height_pipa);
 E404_ATTR_RO(oem_panel_width);
 E404_ATTR_RO(oem_panel_height);
+E404_ATTR_RO(oem_panel_width_pipa);
+E404_ATTR_RO(oem_panel_height_pipa);
 
 E404_ATTR_RW(kgsl_skip_zeroing);
 E404_ATTR_RW(file_sync);
@@ -204,11 +216,15 @@ static struct attribute *e404_attrs[] = {
     &batt_profile_attr.attr,
     &kgsl_skip_zeroing_attr.attr,
     &file_sync_attr.attr,
+    &bg_blocklist_attr.attr,
     &panel_width_attr.attr,
     &panel_height_attr.attr,
+    &panel_width_pipa_attr.attr,
+    &panel_height_pipa_attr.attr,
     &oem_panel_width_attr.attr,
     &oem_panel_height_attr.attr,
-    &bg_blocklist_attr.attr,
+    &oem_panel_width_pipa_attr.attr,
+    &oem_panel_height_pipa_attr.attr,
     NULL,
 };
 

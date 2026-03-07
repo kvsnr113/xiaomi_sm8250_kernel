@@ -20,11 +20,15 @@ struct e404_attributes {
     int batt_profile;
     int kgsl_skip_zeroing;
     int file_sync;
+    char bg_blocklist[E404_BLOCKLIST_STRLEN];
     int panel_width;
     int panel_height;
+    int panel_width_pipa;
+    int panel_height_pipa;
     int oem_panel_width;
     int oem_panel_height;
-    char bg_blocklist[E404_BLOCKLIST_STRLEN];
+    int oem_panel_width_pipa;
+    int oem_panel_height_pipa;
 };
 
 extern struct e404_attributes e404_data;
