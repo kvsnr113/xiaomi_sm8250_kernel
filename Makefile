@@ -700,14 +700,12 @@ KBUILD_LDFLAGS  += -O2
 endif
 
 ifeq ($(cc-name),clang)
-KBUILD_CFLAGS	+= $(call cc-option,-mllvm -hot-cold-split=true)
-KBUILD_CFLAGS	+= $(call cc-option,-mllvm -inline-threshold=2500)
-KBUILD_CFLAGS	+= $(call cc-option,-mllvm -inlinehint-threshold=2000)
-KBUILD_CFLAGS	+= $(call cc-option,-mllvm -unroll-threshold=1200)
-KBUILD_CFLAGS	+= $(call cc-option,-mllvm -enable-ml-inliner=release)
-KBUILD_CFLAGS	+= $(call cc-option,-mllvm -regalloc-enable-advisor=release)
-KBUILD_LDFLAGS	+= $(call cc-option,-mllvm -enable-ml-inliner=release)
-KBUILD_LDFLAGS	+= $(call cc-option,-mllvm -regalloc-enable-advisor=release)
+KBUILD_CFLAGS  += $(call cc-option,-mllvm -hot-cold-split=true)
+
+KBUILD_CFLAGS  += $(call cc-option,-mllvm -enable-ml-inliner=release)
+KBUILD_CFLAGS  += $(call cc-option,-mllvm -regalloc-enable-advisor=release)
+KBUILD_LDFLAGS += $(call cc-option,-mllvm -enable-ml-inliner=release)
+KBUILD_LDFLAGS += $(call cc-option,-mllvm -regalloc-enable-advisor=release)
 
 KBUILD_CFLAGS   += -mcpu=cortex-a55
 KBUILD_AFLAGS   += -mcpu=cortex-a55
